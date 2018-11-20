@@ -1,0 +1,82 @@
+21 September 2018 - version 3.5.4
+  - Added RAD Studio 10.2 Tokyo support.
+  
+21 May 2016 - version 2.5.3
+  - Added support for RAD Studio XE8, RAD Studio 10 Seattle and RAD Studio 10.1 Berlin
+  
+28 October 2014 - version 3.5.2
+  - Added RAD Studio XE7 support.
+    
+28 May 2014 - version 3.5.1
+  - Added RAD Studio XE6 support.
+    
+18 March 2014 - version 3.5
+  - Added RAD Studio XE4 and XE5 support.
+  
+20 April 2013 - version 3.4.8
+  - Added Delphi XE3 and C++ Builder XE3 support.
+    
+7 February 2012 - version 3.4.7
+  - Added Delphi XE2 and C++ Builder XE2 support.
+  				  
+25 June 2011 - version 3.4.6
+  - Added Delphi XE and C++ Builder XE support.
+  
+13 September 2009 - version 3.4.5
+  - Added Delphi 2010 and C++ Builder 2010 support.
+  
+15 March 2009 - version 3.4.4
+  - MultiInstaller is now tri-licensed, you can choose between
+    MPL, GPL and LGPL.
+  
+1 March 2009 - version 3.4.3
+  - Stéphane Wierzbicki improved the SpExecuteDosCommand utility
+    function and added multiple SearchPaths handling, like
+    the Includes parameter, the SearchPath parameter should either
+    contain one source directory or multiple ones. For the later,
+    strings must be enclosed by double quotes and separated by comma.
+  
+17 January 2009 - version 3.4.2
+  - Fixed incorrect French translation of the RAD Studio Project
+    directory, thanks to Stéphane Wierzbicki for reporting it.
+   
+26 September 2008 - version 3.4.1
+  - Added Delphi 2009 and C++ Builder 2009 support.
+   
+4 September 2007 - version 3.4
+  - Added Delphi 2007 and C++ Builder 2007 support.
+    
+24 November 2006 - version 3.3.1
+  - Added extra check to use -JL compiler switch, it will be used
+    only if the C++Builder personality is installed.
+	  
+27 August 2006 - version 3.3
+  - New Logo.
+  - Exe compressed with UPX.
+  - Minor fixes.  
+   	  
+27 June 2006 - version 3.2
+  - Added multilanguage support for Delphi and C++Builder, it
+    now supports English, French, German and Japanese IDEs.
+	   
+15 June 2006 - version 3.1
+  - Added Environment Variables Overrides support, thanks to
+    Wyk for implementing this.
+  - Added -R dcc32.exe compiler switch support to make the
+    components source directory the default *.dcr search
+    folder, thanks to Wyk for reporting this.
+  - Improved the "Intallable" directive, it is now possible to install a
+    package that doesn't have components, this is useful when installing
+    utility libraries, for example GraphicEx, GDI+, DirectX, etc.
+	  
+27 February 2006 - version 3.0
+  - Added support for C++Builder 2006.
+     
+10 February 2006 - version 2.0
+  - Added support for BDS 2006.
+  - Added support for $LIBSUFFIX package compiler directive.
+  - Added DefaultInstallFolder and DefaultInstallIDE Ini key options.  
+  - Replaced the zip library for Abbrevia.
+    
+18 August 2005 - version 1.0
+  - Initial release.

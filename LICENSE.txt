@@ -1,0 +1,12 @@
+The contents of this package are licensed under a disjunctive tri-license giving you the choice of one of the three following sets of free software/open source licensing terms:
+
+ - Mozilla Public License, version 1.1
+   http://www.mozilla.org/MPL/MPL-1.1.html
+ - GNU General Public License, version 2.0
+   http://www.gnu.org/licenses/gpl-2.0.html
+ - GNU Lesser General Public License, version 2.1
+   http://www.gnu.org/licenses/lgpl-2.1.html
+
+Software is distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+
+The initial developer of this package is Robert Lee.

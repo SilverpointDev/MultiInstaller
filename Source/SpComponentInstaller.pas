@@ -1,7 +1,7 @@
 unit SpComponentInstaller;
 
 {==============================================================================
-Version 3.5.4
+Version 3.5.5
 
 The contents of this package are licensed under a disjunctive tri-license
 giving you the choice of one of the three following sets of free
@@ -76,7 +76,7 @@ resourcestring
   SLogInstalling = 'Installing Package: %s';
   SLogFinished = 'All the component packages have been successfully installed.' + #13#10 + 'Elapsed time: %f secs.';
 
-  SGitCloneCommand = 'GIT.EXE clone %s %s';
+  SGitCloneCommand = 'GIT.EXE clone --verbose --progress %s %s';
 
 type
   TSpIDEType = (     // [IDE-Change-Update]
@@ -97,7 +97,8 @@ type
     ideDelphiXE8,    // D22
     ideDelphiSeattle,// D23
     ideDelphiBerlin, // D24
-    ideDelphiTokyo   // D25
+    ideDelphiTokyo,  // D25
+    ideDelphiRio     // D26
   );
 
   TSpIDETypeRec = record
@@ -127,7 +128,8 @@ const
     (IDEVersion: 'D22'; IDEName: 'RAD Studio XE8'; IDERegistryPath: 'SOFTWARE\Embarcadero\BDS\16.0'; IDERADStudioVersion: '16.0'),
     (IDEVersion: 'D23'; IDEName: 'RAD Studio 10 Seattle'; IDERegistryPath: 'SOFTWARE\Embarcadero\BDS\17.0'; IDERADStudioVersion: '17.0'),
     (IDEVersion: 'D24'; IDEName: 'RAD Studio 10.1 Berlin'; IDERegistryPath: 'SOFTWARE\Embarcadero\BDS\18.0'; IDERADStudioVersion: '18.0'),
-    (IDEVersion: 'D25'; IDEName: 'RAD Studio 10.2 Tokyo'; IDERegistryPath: 'SOFTWARE\Embarcadero\BDS\19.0'; IDERADStudioVersion: '19.0')
+    (IDEVersion: 'D25'; IDEName: 'RAD Studio 10.2 Tokyo'; IDERegistryPath: 'SOFTWARE\Embarcadero\BDS\19.0'; IDERADStudioVersion: '19.0'),
+    (IDEVersion: 'D26'; IDEName: 'RAD Studio 10.3 Rio'; IDERegistryPath: 'SOFTWARE\Embarcadero\BDS\20.0'; IDERADStudioVersion: '20.0')
   );
 
 type
@@ -205,12 +207,11 @@ procedure SpWriteLog(Log: TStrings; ResourceS, Arg1: string; Arg2: string = '');
 { Files }
 function SpGetParameter(const ParamName: string; out ParamValue: string): Boolean;
 function SpExecuteDosCommand(CommandLine, WorkDir: string; out OutputString: string): Cardinal;
-function SpExtractZip(ZipFilename, DestinationPath: string): Boolean;
 function SpFileOperation(Origin, Destination: string; Operation: Cardinal): Boolean;
-function SpGetMyDocumentsFolder: string;
-function SpGetCommonDocumentsFolder: string;
-procedure SpGetWinDirs(out Windows, System, Temp: string);
-function SpSelectDirectory(const Caption: string; const Root: WideString; var Directory: string): Boolean;
+function SpSelectDirectory(Root: string; out Directory: string): Boolean;
+
+{ Zip }
+function SpExtractZip(ZipFilename, DestinationPath: string): Boolean;
 
 { Git }
 function SpGitClone(AGit, DestinationPath: string; Log: TStrings): Boolean;
@@ -249,7 +250,7 @@ implementation
 uses
   ActiveX, ShellApi, ShlObj, IniFiles, Registry,
   System.Zip, // Abbrevia is not needed anymore
-  StrUtils;
+  Vcl.FileCtrl, System.IOUtils, StrUtils;
 
 const
   rvCount = 'Count';
@@ -315,34 +316,16 @@ function SpGetParameter(const ParamName: string; out ParamValue: string): Boolea
   File.exe -param1 c:\windows\internet files -param2 -param3
   File.exe -param1 "c:\windows\internet files" -param2 -param3
 
-  SpGetParameter('param1', S) returns S = c:\windows\internet files }
-var
-  I: Integer;
-  S: string;
+  SpGetParameter('param1', ParamValue) returns ParamValue = c:\windows\internet files }
 begin
-  Result := False;
   ParamValue := '';
-
-  for I := 1 to ParamCount do begin
-    S := ParamStr(I);
-    if (S <> '') and ((S[1] = '/') or (S[1] = '-')) then begin
-      if Result then
-        Break  // Next switch reached
-      else begin
-        Delete(S, 1, 1);
-        if (S <> '') and SameText(S, ParamName) then
-          Result := True;  // Set flag
-      end;
-    end
-    else
-      if Result then
-        ParamValue := ParamValue + S
-  end;
+  Result := FindCmdLineSwitch(ParamName, ParamValue);
 end;
 
 function SpExecuteDosCommand(CommandLine, WorkDir: string; out OutputString: string): Cardinal;
 // Executes a DOS file, waits until it terminates and logs the output.
 // CommandLine param can be a file name with params, for example: CMD.exe /c dir D:\mp3
+// Do not use pipes and redirections in CommandLine (|, >, <)
 // Ported by Stephane Wierzbicki from JclSysUtils.InternalExecute
 const
   BufferSize = 255;
@@ -461,14 +444,6 @@ begin
     OutputString := OutputString + MuteCRTerminatedLines(TempOutput);
 end;
 
-function SpExtractZip(ZipFilename, DestinationPath: string): Boolean;
-begin
-  if not DirectoryExists(DestinationPath) then
-    CreateDir(DestinationPath);
-  TZipFile.ExtractZipFile(ZipFilename, DestinationPath);
-  Result := True;
-end;
-
 function SpFileOperation(Origin, Destination: string; Operation: Cardinal): Boolean;
 var
   F: TShFileOpStruct;
@@ -489,142 +464,25 @@ begin
    Result := SHFileOperation(F) = 0;
 end;
 
-function SpGetMyDocumentsFolder: string;
+function SpSelectDirectory(Root: string; out Directory: string): Boolean;
+// SelectDirectory with new UI
 var
-  TargetPIDL: PItemIDList;
-  S: string;
+  DArray: TArray<string>;
 begin
-  Result := '';
-  if Succeeded(SHGetSpecialFolderLocation(Application.Handle, CSIDL_PERSONAL, TargetPIDL)) then
-  begin
-    SetLength(S, MAX_PATH);
-    FillChar(PChar(S)^, MAX_PATH, #0);
-    if SHGetPathFromIDList(TargetPIDL, PChar(S)) then begin
-      SetLength(S, StrLen(PChar(S)));
-      Result := IncludeTrailingPathDelimiter(S);
-    end;
-  end;
+  Result := Vcl.FileCtrl.SelectDirectory(Root, DArray, []);
+  if Result then
+    Directory := DArray[0];
 end;
 
-function SpGetCommonDocumentsFolder: string;
-// Gets All Users\Documents folder.
-// Gets Public\Documents folder on Vista
-var
-  TargetPIDL: PItemIDList;
-  S: string;
+//WMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWM
+{ Zip }
+
+function SpExtractZip(ZipFilename, DestinationPath: string): Boolean;
 begin
-  Result := '';
-  if Succeeded(SHGetSpecialFolderLocation(Application.Handle, CSIDL_COMMON_DOCUMENTS, TargetPIDL)) then
-  begin
-    SetLength(S, MAX_PATH);
-    FillChar(PChar(S)^, MAX_PATH, #0);
-    if SHGetPathFromIDList(TargetPIDL, PChar(S)) then begin
-      SetLength(S, StrLen(PChar(S)));
-      Result := IncludeTrailingPathDelimiter(S);
-    end;
-  end;
-end;
-
-procedure SpGetWinDirs(out Windows, System, Temp: string);
-var
-  S: string;
-begin
-  Windows := '';
-  System := '';
-  Temp := '';
-
-  SetLength(S, MAX_PATH);
-  if GetWindowsDirectory(PChar(S), MAX_PATH) <> 0 then begin
-    SetLength(S, StrLen(PChar(S)));
-    Windows := S;
-  end;
-
-  SetLength(S, MAX_PATH);
-  if GetSystemDirectory(PChar(S), MAX_PATH) <> 0 then begin
-    SetLength(S, StrLen(PChar(S)));
-    System := S;
-  end;
-
-  SetLength(S, MAX_PATH);
-  if GetTempPath(MAX_PATH, PChar(S)) <> 0 then begin
-    SetLength(S, StrLen(PChar(S)));
-    Temp := S;
-  end;
-end;
-
-function SpSelectDirCB(Wnd: HWND; uMsg: UINT; lParam, lpData: LPARAM): Integer stdcall;
-begin
-  if (uMsg = BFFM_INITIALIZED) and (lpData <> 0) then
-    SendMessage(Wnd, BFFM_SETSELECTION, Integer(True), lpdata);
-  result := 0;
-end;
-
-function SpSelectDirectory(const Caption: string; const Root: WideString;
-  var Directory: string): Boolean;
-// SelectDirectory with new UI, Edit box and 'Create Folder' button
-const
-  BIF_NEWDIALOGSTYLE = $0040;
-  BIF_USENEWUI = (BIF_NEWDIALOGSTYLE or BIF_EDITBOX);
-var
-  WindowList: Pointer;
-  BrowseInfo: TBrowseInfo;
-  Buffer: PChar;
-  OldErrorMode: Cardinal;
-  RootItemIDList, ItemIDList: PItemIDList;
-  ShellMalloc: IMalloc;
-  IDesktopFolder: IShellFolder;
-  Eaten, Flags: LongWord;
-begin
-  Result := False;
-  if not DirectoryExists(Directory) then
-    Directory := '';
-  FillChar(BrowseInfo, SizeOf(BrowseInfo), 0);
-  if (ShGetMalloc(ShellMalloc) = S_OK) and (ShellMalloc <> nil) then
-  begin
-    Buffer := ShellMalloc.Alloc(MAX_PATH);
-    try
-      RootItemIDList := nil;
-      if Root <> '' then
-      begin
-        SHGetDesktopFolder(IDesktopFolder);
-        IDesktopFolder.ParseDisplayName(Application.Handle, nil,
-          POleStr(Root), Eaten, RootItemIDList, Flags);
-      end;
-      with BrowseInfo do
-      begin
-        hwndOwner := Application.Handle;
-        pidlRoot := RootItemIDList;
-        pszDisplayName := Buffer;
-        lpszTitle := PChar(Caption);
-        ulFlags := BIF_RETURNONLYFSDIRS;
-        if Win32MajorVersion >= 5 then
-          ulFlags := ulFlags or BIF_USENEWUI;
-
-        if Directory <> '' then
-        begin
-          lpfn := SpSelectDirCB;
-          lParam := Integer(PChar(Directory));
-        end;
-      end;
-      WindowList := DisableTaskWindows(0);
-      OldErrorMode := SetErrorMode(SEM_FAILCRITICALERRORS);
-      try
-        ItemIDList := ShBrowseForFolder(BrowseInfo);
-      finally
-        SetErrorMode(OldErrorMode);
-        EnableTaskWindows(WindowList);
-      end;
-      Result :=  ItemIDList <> nil;
-      if Result then
-      begin
-        ShGetPathFromIDList(ItemIDList, Buffer);
-        ShellMalloc.Free(ItemIDList);
-        Directory := Buffer;
-      end;
-    finally
-      ShellMalloc.Free(Buffer);
-    end;
-  end;
+  if not TDirectory.Exists(DestinationPath) then
+    CreateDir(DestinationPath);
+  TZipFile.ExtractZipFile(ZipFilename, DestinationPath);
+  Result := True;
 end;
 
 //WMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWM
@@ -635,7 +493,7 @@ var
   CommandLine, DosOutput: string;
 begin
   CommandLine := Format(SGitCloneCommand, [AGit, DestinationPath]);
-  Result := SpExecuteDosCommand(CommandLine, DestinationPath, DosOutput) = 0;
+  Result := SpExecuteDosCommand(CommandLine, '', DosOutput) = 0;
   if Assigned(Log) then
     Log.Text := Log.Text + DosOutput + #13#10;
 end;
@@ -784,7 +642,7 @@ begin
   Result := satNone;
   S := LowerCase(S);
   for A := Low(ActionTypes) to High(ActionTypes) do
-    if AnsiCompareText(S, ActionTypes[A]) = 0 then begin
+    if AnsiSameText(S, ActionTypes[A]) then begin
       Result := A;
       Exit;
     end;
@@ -796,7 +654,7 @@ var
 begin
   Result := ideNone;
   for A := Low(IDETypes) to High(IDETypes) do
-    if AnsiCompareText(S, IDETypes[A].IDEVersion) = 0 then begin
+    if AnsiSameText(S, IDETypes[A].IDEVersion) then begin
       Result := A;
       Exit;
     end;
@@ -816,7 +674,7 @@ function SpIDEDCC32Path(IDE: TSpIDEType): string;
 begin
   SpReadRegValue(IDETypes[IDE].IDERegistryPath, 'App', Result);
   if Result <> '' then
-    Result := IncludeTrailingPathDelimiter(ExtractFilePath(Result)) + 'dcc32.exe';
+    Result := TPath.Combine(TPath.GetDirectoryName(Result), 'dcc32.exe');
 end;
 
 function SpIDEInstalled(IDE: TSpIDEType): Boolean;
@@ -824,7 +682,7 @@ begin
   if IDE = ideNone then
     Result := False
   else
-    Result := FileExists(SpIDEDCC32Path(IDE));
+    Result := TFile.Exists(SpIDEDCC32Path(IDE));
 end;
 
 function SpIDEPersonalityInstalled(IDE: TSpIDEType; IDEPersonality: TSpIDEPersonality): Boolean;
@@ -940,11 +798,11 @@ begin
     S := S + IDETypes[IDE].IDERADStudioVersion;
 
     // First try to find it on All Users
-    Result := SpGetCommonDocumentsFolder + S;
-    if not DirectoryExists(Result) then begin
+    Result := TPath.Combine(TPath.GetSharedDocumentsPath, S);
+    if not TDirectory.Exists(Result) then begin
       // If it's not found try it on My Documents
-      Result := SpGetMyDocumentsFolder + S;
-      if not DirectoryExists(Result) then
+      Result := TPath.Combine(TPath.GetDocumentsPath, S);
+      if not TDirectory.Exists(Result) then
         Result := '';
     end;
   end;
@@ -970,20 +828,20 @@ begin
     // HKCU\Software\Borland\BDS\4.0\Globals
     R := IDETypes[IDE].IDERegistryPath;
     SpReadRegValue(R + '\Globals', 'DefaultProjectsDirectory', Result);
-    if not DirectoryExists(Result) then begin
+    if not TDirectory.Exists(Result) then begin
       // The IDE user can override it on the Environment Options menu,
       // the value is stored on the 'BDSPROJECTSDIR' key name on:
       // HKCU\Software\Borland\BDS\4.0\Environment Variables
       SpReadRegValue(R + '\Environment Variables', 'BDSPROJECTSDIR', Result);
-      if not DirectoryExists(Result) then begin
+      if not TDirectory.Exists(Result) then begin
         // Since BDSPROJECTSDIR is not defined in the registry we have to find it
         // manually, looking for all the localized dir names.
-        MyDocs := SpGetMyDocumentsFolder;
+        MyDocs := TPath.GetDocumentsPath;
         if IDE in [ideDelphi2005, ideDelphi2006] then begin
           // For older BDS check if it's My Documents\Borland Studio Projects
           for I := 0 to High(DirArrayBDS) do begin
-            Result := MyDocs + DirArrayBDS[I];
-            if DirectoryExists(Result) then Break;
+            Result := TPath.Combine(MyDocs, DirArrayBDS[I]);
+            if TDirectory.Exists(Result) then Break;
           end;
         end
         else begin
@@ -991,14 +849,14 @@ begin
           // or My Documents\RAD Studio\Projects
           for I := 0 to High(DirArrayRAD) do begin
             if IDE >= ideDelphiXE6 then
-              Result := MyDocs + 'Embarcadero\Studio\' + DirArrayRAD[I]
+              Result := TPath.Combine(MyDocs, 'Embarcadero\Studio\' + DirArrayRAD[I])
             else
-              Result := MyDocs + 'RAD Studio\' + DirArrayRAD[I];
-            if DirectoryExists(Result) then Break;
+              Result := TPath.Combine(MyDocs, 'RAD Studio\' + DirArrayRAD[I]);
+            if TDirectory.Exists(Result) then Break;
           end;
         end;
 
-        if not DirectoryExists(Result) then
+        if not TDirectory.Exists(Result) then
           Result := '';
       end;
     end;
@@ -1066,11 +924,12 @@ begin
   Result := False;
   RunTime := False;
   DesignTime := False;
-
   Description := '';
-  BPLFilename := BPLDir + ChangeFileExt(ExtractFileName(PackageFilename), '.bpl');
   BPLSuffix := '';
-  if FileExists(PackageFilename) then begin
+  BPLFilename := '';
+  if TFile.Exists(PackageFilename) then begin
+    BPLFilename := TPath.ChangeExtension(TPath.GetFileName(PackageFilename), 'bpl');
+
     L := TStringList.Create;
     try
       L.LoadFromFile(PackageFilename);
@@ -1094,12 +953,11 @@ begin
         if P2 > 0 then begin
           BPLSuffix := Copy(L.Text, P, P2 - P);
           // Rename BPL filename to include the suffix
-          P := LastDelimiter('.', BPLFilename);
-          if P > 0 then
-            BPLFilename := Copy(BPLFilename, 1, P - 1) + BPLSuffix + Copy(BPLFilename, P, MaxInt);
+          BPLFilename := TPath.GetFileNameWithoutExtension(BPLFilename) + BPLSuffix + TPath.GetExtension(BPLFilename);
         end;
       end;
 
+      BPLFilename := TPath.Combine(BPLDir, BPLFilename);
       Result := True;
     finally
       L.Free;
@@ -1114,7 +972,7 @@ var
 begin
   Result := False;
 
-  if FileExists(PackageFilename) then begin
+  if TFile.Exists(PackageFilename) then begin
     L := TStringList.Create;
     try
       L.LoadFromFile(PackageFilename);
@@ -1127,7 +985,7 @@ begin
   end;
 end;
 
-function SpCompilePackage(PackageFilename, DCC: string; IDE: TSpIDEType; 
+function SpCompilePackage(PackageFilename, DCC: string; IDE: TSpIDEType;
   SourcesL, IncludesL, Log: TStrings; TempDir: string = ''): Boolean;
 // PackageFilename = full path of the package, e.g. 'C:\MyCompos\Compo\Packages\D7Runtime.dpk
 // DCC = full path of dcc32.exe, e.g. 'C:\Program Files\Borland\Delphi7\Bin\dcc32.exe
@@ -1145,7 +1003,7 @@ var
 begin
   Result := False;
   if IDE = ideNone then Exit;
-  if not FileExists(PackageFilename) then begin
+  if not TFile.Exists(PackageFilename) then begin
     if Assigned(Log) then
       SpWriteLog(Log, SLogInvalidPath, PackageFilename);
     Exit;
@@ -1155,8 +1013,8 @@ begin
     // But it works fine without -Q if ShellExecute is used:
     // ShellExecute(Application.Handle, 'open', DCC, ExtractFileName(PackageFilename), ExtractFilePath(PackageFilename), SW_SHOWNORMAL);
     // There must be something wrong with SpExecuteDosCommand
-    CommandLine := DCC + ' -Q  ' + ExtractFileName(PackageFilename);
-    WorkDir := ExtractFilePath(PackageFilename);
+    CommandLine := DCC + ' -Q  ' + TPath.GetFileName(PackageFilename);
+    WorkDir := TPath.GetDirectoryName(PackageFilename);
 
     // Create and save DCC32.CFG file on the Package directory
     L := TStringList.Create;
@@ -1176,7 +1034,7 @@ begin
         Delete(S, Length(S), 1);
 
       // Save the DCC32.CFG file on the Package directory
-      DCCConfig := IncludeTrailingPathDelimiter(WorkDir) + 'DCC32.CFG';
+      DCCConfig := TPath.Combine(WorkDir, 'DCC32.CFG');
       R := IDETypes[IDE].IDERegistryPath;
       L.Clear;
       // SearchPath
@@ -1197,7 +1055,7 @@ begin
         SpReadRegValue(R + '\Library', 'Package DPL Output', S);
       S := SpIDEExpandMacros(S, IDE);
       L.Add('-LE"' + S + '"');
-      BPLDir := IncludeTrailingPathDelimiter(S);
+      BPLDir := S;
       // DCP Output
       if IDE >= ideDelphiXE2 then
         SpReadRegValue(R + '\Library\Win32', 'Package DCP Output', S)
@@ -1261,7 +1119,6 @@ begin
   Result := False;
   if IDE = ideNone then Exit;
 
-  BPLDir := IncludeTrailingPathDelimiter(BPLDir);
   SpGetPackageOptions(PackageFilename, BPLDir, RunTime, DesignTime, BPLFilename, Description);
 
   RegKey := IDETypes[IDE].IDERegistryPath + '\Known Packages';
@@ -1271,7 +1128,7 @@ begin
     Result := True
   end
   else begin
-    if FileExists(BPLFilename) then begin
+    if TFile.Exists(BPLFilename) then begin
       if SpWriteRegValue(RegKey, BPLFilename, Description) then begin
         SpWriteLog(Log, SLogInstalling, PackageFilename);
         Result := True;
@@ -1311,16 +1168,16 @@ end;
 procedure TSpComponentPackageList.LoadFromIni(Filename: string);
 var
   F: TMemIniFile;
-  L: TStringList;
+  LSections: TStringList;
   Entry: TSpComponentPackage;
   I, Aux: integer;
   S: string;
   A: TSpIDEType;
 begin
-  if not FileExists(Filename) then
+  if not TFile.Exists(Filename) then
     Exit;
 
-  L := TStringList.Create;
+  LSections := TStringList.Create;
   F := TMemIniFile.Create(Filename);
   try
     S := F.ReadString(rvOptionsIniSection, rvDefaultInstallIDE, '');
@@ -1332,37 +1189,37 @@ begin
     if FMinimumIDE = ideNone then
       FMinimumIDE := ideDelphi7;
 
-    F.ReadSections(L);
-    for I := 0 to L.Count - 1 do
-      if Length(L[I]) > Length(rvPackageIniSectionPrefix) then begin
-        S := Copy(L[I], 1, Length(rvPackageIniSectionPrefix));
-        if AnsiCompareText(S, rvPackageIniSectionPrefix) = 0 then begin
+    F.ReadSections(LSections);
+    for I := 0 to LSections.Count - 1 do begin
+      S := LSections[I];
+      if Length(S) > Length(rvPackageIniSectionPrefix) then
+        if AnsiSameText(Copy(S, 1, Length(rvPackageIniSectionPrefix)), rvPackageIniSectionPrefix) then begin
           Entry := TSpComponentPackage.Create;
-          Entry.Name := F.ReadString(L[I], rvName, '');
-          Entry.ZipFile := F.ReadString(L[I], rvZip, '');
-          Entry.Git := F.ReadString(L[I], rvGit, '');
-          Entry.Destination := F.ReadString(L[I], rvFolder, '');
-          Entry.SearchPath := F.ReadString(L[I], rvSearchPath, '');
-          Entry.GroupIndex := F.ReadInteger(L[I], rvGroupIndex, 0);
-          Aux := F.ReadInteger(L[I], rvInstallable, 1);
+          Entry.Name := F.ReadString(S, rvName, '');
+          Entry.ZipFile := F.ReadString(S, rvZip, '');
+          Entry.Git := F.ReadString(S, rvGit, '');
+          Entry.Destination := F.ReadString(S, rvFolder, '');
+          Entry.SearchPath := F.ReadString(S, rvSearchPath, '');
+          Entry.GroupIndex := F.ReadInteger(S, rvGroupIndex, 0);
+          Aux := F.ReadInteger(S, rvInstallable, 1);
           if Aux < 0 then Aux := 0;
           if Aux > Ord(High(TSpInstallType)) then Aux := 1;
           Entry.Installable := TSpInstallType(Aux);
-          Entry.Includes := F.ReadString(L[I], rvIncludes, '');
+          Entry.Includes := F.ReadString(S, rvIncludes, '');
 
           // [IDE-Change]
           if Entry.Installable = sitInstallable then begin
-            for A := Low(TSpIDEType) to High(TSpIDEType) do
-              Entry.PackageList[A] := F.ReadString(L[I], IDETypes[A].IDEVersion, '');
+            for A := FMinimumIDE to High(TSpIDEType) do
+              Entry.PackageList[A] := F.ReadString(S, IDETypes[A].IDEVersion, '');
           end;
 
-          Entry.ExecuteList.LoadFromIni(Filename, L[I]);
+          Entry.ExecuteList.LoadFromIni(Filename, S);
 
           Add(Entry);
         end;
-      end;
+    end;
   finally
-    L.Free;
+    LSections.Free;
     F.Free;
   end;
 end;
@@ -1376,11 +1233,8 @@ begin
   Result := False;
   SpWriteLog(Log, SLogStartUnzip, '');
 
-  Source := IncludeTrailingPathDelimiter(Source);
-  Destination := IncludeTrailingPathDelimiter(Destination);
-
   // Check if the files exist
-  if not DirectoryExists(Destination) then begin
+  if not TDirectory.Exists(Destination) then begin
     SpWriteLog(Log, SLogInvalidPath, Destination);
     Exit;
   end;
@@ -1388,19 +1242,19 @@ begin
     Item := Items[I];
     // Expand ZipFile
     if Item.ZipFile <> '' then
-      Item.ZipFile := Source + Item.ZipFile;
+      Item.ZipFile := TPath.Combine(Source, Item.ZipFile);
     // Expand Destination
     if Item.Destination <> '' then
-      Item.Destination := IncludeTrailingPathDelimiter(Destination + Item.Destination);
-    if FileExists(Item.ZipFile) then begin
-      if UpperCase(ExtractFileExt(Item.ZipFile)) <> '.ZIP' then begin
+      Item.Destination := TPath.Combine(Destination, Item.Destination);
+    if TFile.Exists(Item.ZipFile) then begin
+      if not AnsiSameText(TPath.GetExtension(Item.ZipFile), '.ZIP') then begin
         SpWriteLog(Log, SLogNotAZip, Item.ZipFile);
         Exit;
       end;
-    end 
-    else 
+    end
+    else
       if Item.Git <> '' then begin
-        if UpperCase(ExtractFileExt(Item.Git)) <> '.GIT' then begin
+        if not AnsiSameText(TPath.GetExtension(Item.Git), '.GIT') then begin
           SpWriteLog(Log, SLogNotAGit, Item.Git);
           Exit;
         end;
@@ -1417,8 +1271,8 @@ begin
         SpWriteLog(Log, SLogCorruptedZip, Item.ZipFile);
         Exit;
       end;
-    end 
-    else 
+    end
+    else
       if Item.Git <> '' then begin
         SpWriteLog(Log, SLogGitCloning, Item.Git, Item.Destination);
         if not SpGitClone(Item.Git, Item.Destination, Log) then begin
@@ -1426,7 +1280,7 @@ begin
           Exit;
         end;
       end
-      else 
+      else
         SpWriteLog(Log, SLogNotInstallable, Item.Name); // Not a Zip nor a Git, keep going
   end;
   Result := True;
@@ -1453,7 +1307,6 @@ var
   I, J: integer;
   Item: TSpComponentPackage;
   SourcesL, CompileL, IncludesL: TStringList;
-  Aux1, Aux2: string; // Auxiliary strings
 begin
   Result := False;
   if IDE = ideNone then begin
@@ -1467,8 +1320,7 @@ begin
     end;
 
   // Create TempDir
-  SpGetWinDirs(Aux1, Aux2, TempDir);
-  TempDir := IncludeTrailingPathDelimiter(TempDir) + 'SpMultiInstall';
+  TempDir := TPath.Combine(TPath.GetTempPath, 'SpMultiInstall');
   CreateDir(TempDir);
 
   DCC := SpIDEDCC32Path(IDE);
@@ -1485,7 +1337,7 @@ begin
         SourcesL.CommaText := Item.SearchPath;
         // Add the destination search path
         for J := 0 to SourcesL.Count - 1 do
-          SourcesL[J] := Item.Destination + SourcesL[J];
+          SourcesL[J] := TPath.Combine(Item.Destination, SourcesL[J]);
       end
       else
         SourcesL.Add(Item.Destination);
@@ -1505,18 +1357,14 @@ begin
             // Expand Packages
             CompileL.CommaText := Item.PackageList[IDE];
             for J := 0 to CompileL.Count - 1 do
-              CompileL[J] := Item.Destination + CompileL[J];
+              CompileL[J] := TPath.Combine(Item.Destination, CompileL[J]);
             // Runtime packages must be compiled first
             // There should be a better way of detecting this, checking
             // package dependencies when there are more than 2 packages
             // on the list
             if CompileL.Count = 2 then
-              for J := 0 to CompileL.Count - 1 do
-                if SpIsDesignTimePackage(CompileL[J]) then begin
-                  Aux1 := CompileL[J];
-                  CompileL[J] := CompileL[CompileL.Count - 1];
-                  CompileL[CompileL.Count - 1] := Aux1;
-                end;
+              if SpIsDesignTimePackage(CompileL[0]) then
+                CompileL.Exchange(0, 1);
             // Expand Includes
             IncludesL.CommaText := StringReplace(Item.Includes, rvBaseFolder, ExcludeTrailingPathDelimiter(BaseFolder), [rfReplaceAll, rfIgnoreCase]);
             // Compile and Install
@@ -1590,11 +1438,11 @@ var
   begin
     // Run it if it's a valid file
     Result := False;
-    S := ExtractFileName(Item.Origin);
+    S := TPath.GetFileName(Item.Origin);
     if S <> '' then begin
-      S := IncludeTrailingPathDelimiter(Item.Destination) + S;
+      S := TPath.Combine(Item.Destination, S);
       SpWriteLog(Log, SLogExecuting, S);
-      if SpExecuteDosCommand(S, ExcludeTrailingPathDelimiter(Item.Destination), DosOutput) = 0 then begin
+      if SpExecuteDosCommand(S, Item.Destination, DosOutput) = 0 then begin
         Log.Text := Log.Text + DosOutput + #13#10;
         Result := True;
       end
@@ -1609,9 +1457,9 @@ begin
   // Check if the files exist
   for I := 0 to Count - 1 do begin
     Item := Items[I];
-    Item.Origin := StringReplace(Item.Origin, rvBaseFolder, ExcludeTrailingPathDelimiter(BaseFolder), [rfReplaceAll, rfIgnoreCase]);
-    Item.Destination := StringReplace(Item.Destination, rvBaseFolder, ExcludeTrailingPathDelimiter(BaseFolder), [rfReplaceAll, rfIgnoreCase]);
-    if not FileExists(Item.Origin) then begin
+    Item.Origin := StringReplace(Item.Origin, rvBaseFolder, BaseFolder, [rfReplaceAll, rfIgnoreCase]);
+    Item.Destination := StringReplace(Item.Destination, rvBaseFolder, BaseFolder, [rfReplaceAll, rfIgnoreCase]);
+    if not TFile.Exists(Item.Origin) then begin
       SpWriteLog(Log, SLogInvalidPath, Item.Origin);
       Exit;
     end;

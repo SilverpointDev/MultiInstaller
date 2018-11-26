@@ -471,7 +471,7 @@ object Form1: TForm1
     end
   end
   object ActionList1: TActionList
-    Left = 136
+    Left = 88
     Top = 208
     object aBack: TAction
       Caption = '< Back'
@@ -512,7 +512,7 @@ object Form1: TForm1
     Enabled = False
     Interval = 500
     OnTimer = Timer1Timer
-    Left = 200
+    Left = 240
     Top = 208
   end
 end

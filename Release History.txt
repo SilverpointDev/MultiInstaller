@@ -1,3 +1,7 @@
+26 November 2018 - version 3.5.5
+  - Added RAD Studio 10.3 Rio support.
+  - Added GIT support, thanks to PyScripter
+
 21 September 2018 - version 3.5.4
   - Added RAD Studio 10.2 Tokyo support.
   

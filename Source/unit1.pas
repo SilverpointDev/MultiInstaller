@@ -6,7 +6,7 @@ interface
 {$WARN UNIT_PLATFORM OFF}
 {$BOOLEVAL OFF} // Unit depends on short-circuit boolean evaluation
 
-  {$DEFINE SPDEBUGMODE} // Uncomment to debug
+//  {$DEFINE SPDEBUGMODE} // Uncomment to debug
 
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
@@ -14,7 +14,7 @@ uses
   IniFiles, Actions, SpComponentInstaller;
 
 const
-  rvMultiInstallerVersion = 'Silverpoint MultiInstaller 3.5.4';
+  rvMultiInstallerVersion = 'Silverpoint MultiInstaller 3.5.5';
   rvMultiInstallerLink = 'http://www.silverpointdevelopment.com';
 
 resourcestring
@@ -331,8 +331,7 @@ procedure TForm1.aBrowseExecute(Sender: TObject);
 var
   D: string;
 begin
-  D := '';
-  if SpSelectDirectory('', '', D) then
+  if SpSelectDirectory('', D) then
     InstallFolderEdit.Text := D;
 end;
 

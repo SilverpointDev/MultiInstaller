@@ -231,7 +231,7 @@ begin
 
   for IDE := Low(TSpIDEType) to High(TSpIDEType) do
     if IDE >= Installer.ComponentPackages.MinimumIDE then
-      if SpIDEInstalled(IDE) then begin
+      if TSpDelphiIDE.Installed(IDE) then begin
         RadioGroup1.Items.AddObject(IDETypes[IDE].IDEName, Pointer(Ord(IDE)));
         if IDE = Installer.ComponentPackages.DefaultInstallIDE then
           RadioGroup1.ItemIndex := RadioGroup1.Items.Count - 1;
@@ -308,7 +308,7 @@ end;
 
 procedure TForm1.aNextExecute(Sender: TObject);
 begin
-  ChangePAge(True);
+  ChangePage(True);
 end;
 
 procedure TForm1.aCancelExecute(Sender: TObject);
@@ -359,21 +359,13 @@ var
   IDE: TSpIDEType;
 begin
   Result := False;
+  CloseDelphi;
 
   // Get IDE version
   IDE := ideNone;
   I := RadioGroup1.ItemIndex;
-  if (CompileCheckbox.Checked) and (I > -1) and Assigned(RadioGroup1.Items.Objects[I]) then begin
+  if (CompileCheckbox.Checked) and (I > -1) and Assigned(RadioGroup1.Items.Objects[I]) then
     IDE := TSpIDEType(RadioGroup1.Items.Objects[I]);
-    // Try to detect BDS Project Dir
-    // BDS doesn't define $(BDSPROJECTSDIR) in the registry we have to detect it
-    if IDE > ideDelphi7 then
-      if SpIDEBDSProjectsDir(IDE) = '' then begin
-        MessageDlg(SErrorDetectingBDSPROJECTSDIR, mtError, [mbOK], 0);
-        Close;
-        Exit;
-      end;
-  end;
 
   // Delete unchecked components from the ComponentPackages list
   for I := 0 to CheckListBox1.Count - 1 do
@@ -387,7 +379,6 @@ begin
             Installer.ComponentPackages.Delete(J);
     end;
 
-  CloseDelphi;
   try
     aFinish.Visible := True;
     aSaveLog.Visible := True;

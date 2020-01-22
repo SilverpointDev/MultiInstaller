@@ -1,3 +1,6 @@
+22 January 2020 - version 3.5.6
+  - Code cleanup
+  
 26 November 2018 - version 3.5.5
   - Added RAD Studio 10.3 Rio support.
   - Added GIT support, thanks to PyScripter

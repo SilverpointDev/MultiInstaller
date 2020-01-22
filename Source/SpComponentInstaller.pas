@@ -192,13 +192,18 @@ type
 
   TSpInstallType = (sitNotInstallable, sitInstallable, sitSearchPathOnly);
 
-  TSpExecuteEntry = record
-    Action: TSpActionType;
-    Origin: string;
-    Destination: string;
+  TSpExecuteEntry = class
+  private
+    FAction: TSpActionType;
+    FOrigin: string;
+    FDestination: string;
+  public
+    property Action: TSpActionType read FAction write FAction;
+    property Origin: string read FOrigin write FOrigin;
+    property Destination: string read FDestination write FDestination;
   end;
 
-  TSpExecuteList = class(TList<TSpExecuteEntry>)
+  TSpExecuteList = class(TObjectList<TSpExecuteEntry>)
   public
     procedure LoadFromIni(Filename, Section: string);
     function ExecuteAll(BaseFolder: string; Log: TStrings): Boolean;
@@ -1528,6 +1533,7 @@ begin
       if SpParseEntryValue(L[I], V, 3) then begin
         Action := SpStringToActionType(V[0]);
         if Action <> satNone then begin
+          ExecuteEntry := TSpExecuteEntry.Create;
           ExecuteEntry.Action := Action;
           ExecuteEntry.Origin := V[1];
           ExecuteEntry.Destination := V[2];

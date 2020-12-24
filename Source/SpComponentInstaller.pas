@@ -1,7 +1,7 @@
 unit SpComponentInstaller;
 
 {==============================================================================
-Version 3.5.5
+Version 3.5.7
 
 The contents of this package are licensed under a disjunctive tri-license
 giving you the choice of one of the three following sets of free
@@ -100,7 +100,8 @@ type
     ideDelphiSeattle,// D23
     ideDelphiBerlin, // D24
     ideDelphiTokyo,  // D25
-    ideDelphiRio     // D26
+    ideDelphiRio,    // D26
+    ideDelphiSydney  // D27
   );
 
   TSpIDETypeRec = record
@@ -131,7 +132,8 @@ const
     (IDEVersion: 'D23'; IDEName: 'RAD Studio 10 Seattle'; IDERegistryPath: 'SOFTWARE\Embarcadero\BDS\17.0'; IDERADStudioVersion: '17.0'),
     (IDEVersion: 'D24'; IDEName: 'RAD Studio 10.1 Berlin'; IDERegistryPath: 'SOFTWARE\Embarcadero\BDS\18.0'; IDERADStudioVersion: '18.0'),
     (IDEVersion: 'D25'; IDEName: 'RAD Studio 10.2 Tokyo'; IDERegistryPath: 'SOFTWARE\Embarcadero\BDS\19.0'; IDERADStudioVersion: '19.0'),
-    (IDEVersion: 'D26'; IDEName: 'RAD Studio 10.3 Rio'; IDERegistryPath: 'SOFTWARE\Embarcadero\BDS\20.0'; IDERADStudioVersion: '20.0')
+    (IDEVersion: 'D26'; IDEName: 'RAD Studio 10.3 Rio'; IDERegistryPath: 'SOFTWARE\Embarcadero\BDS\20.0'; IDERADStudioVersion: '20.0'),
+    (IDEVersion: 'D26'; IDEName: 'RAD Studio 10.4 Sydney'; IDERegistryPath: 'SOFTWARE\Embarcadero\BDS\21.0'; IDERADStudioVersion: '21.0')
   );
 
 type

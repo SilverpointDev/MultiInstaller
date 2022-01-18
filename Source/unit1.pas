@@ -14,7 +14,7 @@ uses
   IniFiles, Actions, SpComponentInstaller;
 
 const
-  rvMultiInstallerVersion = 'Silverpoint MultiInstaller 3.5.7';
+  rvMultiInstallerVersion = 'Silverpoint MultiInstaller 3.5.8';
   rvMultiInstallerLink = 'http://www.silverpointdevelopment.com';
 
 resourcestring
@@ -68,6 +68,7 @@ type
     Bevel2: TBevel;
     PaintBoxLabel: TPaintBox;
     Image1: TImage;
+    CheckBox1: TCheckBox;
     procedure FormCreate(Sender: TObject);
     procedure aBrowseExecute(Sender: TObject);
     procedure aBackExecute(Sender: TObject);
@@ -213,12 +214,15 @@ begin
     if G > 0 then begin
       P := CheckListBox1.Items.IndexOfObject(Pointer(G));
       if P > -1 then
-        CheckListBox1.Items[P] := CheckListBox1.Items[P] + #13#10 + Installer.ComponentPackages[I].Name
+        CheckListBox1.Items[P] := CheckListBox1.Items[P] + #13#10 + Installer.ComponentPackages[I].Name;
     end;
 
     if P = -1 then begin
       P := CheckListBox1.Items.AddObject(Installer.ComponentPackages[I].Name, Pointer(G));
       CheckListBox1.Checked[P] := True;
+      if Installer.ComponentPackages[I].Git <> '' then
+        CheckListBox1.Items[P] := CheckListBox1.Items[P] + #13#10 +
+          'GIT: ' + Installer.ComponentPackages[I].Git;
     end;
   end;
 end;
@@ -276,7 +280,7 @@ procedure TForm1.CheckListBox1DrawItem(Control: TWinControl;
 begin
   if Index > -1 then begin
     CheckListBox1.Canvas.FillRect(Rect);
-  OffsetRect(Rect, 8, 2);
+    OffsetRect(Rect, 8, 2);
     DrawText(CheckListBox1.Canvas.Handle, PChar(CheckListBox1.Items[Index]), -1, Rect, 0);
   end;
 end;
@@ -375,18 +379,24 @@ begin
         if (G > 0) and (Installer.ComponentPackages[J].GroupIndex = G) then
           Installer.ComponentPackages.Delete(J)
         else
-          if CheckListBox1.Items[I] = Installer.ComponentPackages[J].Name then
+          if CheckListBox1.items[I].Contains(Installer.ComponentPackages[J].Name) then
             Installer.ComponentPackages.Delete(J);
     end;
 
-  try
-    aFinish.Visible := True;
-    aSaveLog.Visible := True;
-    aBack.Visible := False;
-    aNext.Visible := False;
-    aCancel.Visible := False;
-    Application.ProcessMessages;
+  // Prioritize GIT over ZIP
+  if CheckBox1.Checked then begin
+    for J := 0 to Installer.ComponentPackages.Count - 1 do
+      if not Installer.ComponentPackages[J].Git.IsEmpty then
+        Installer.ComponentPackages[J].ZipFile := '';
+  end;
 
+  aFinish.Visible := True;
+  aSaveLog.Visible := True;
+  aBack.Visible := False;
+  aNext.Visible := False;
+  aCancel.Visible := False;
+  Application.ProcessMessages;
+  try
     // Check, Unzip, Patch, Compile, Install
     if Installer.Install(AppPath, InstallFolderEdit.Text, IDE, LogMemo.Lines) then
       Result := True;

@@ -1,7 +1,7 @@
 unit SpComponentInstaller;
 
 {==============================================================================
-Version 3.5.7
+Version 3.5.8
 
 The contents of this package are licensed under a disjunctive tri-license
 giving you the choice of one of the three following sets of free
@@ -37,7 +37,7 @@ interface
 {$WARN UNIT_PLATFORM OFF}
 {$BOOLEVAL OFF} // Unit depends on short-circuit boolean evaluation
 
-{$R 'SpComponentInstallerRes.res'}
+{$R 'SpComponentInstallerRes.res'}  // Has EmptyResourceFile.res file as a resource used by TSpDelphiDPKFile.CreateAndCopyEmptyResIfNeeded
 
 uses
   Windows, Messages, SysUtils, Classes, Forms, Contnrs, Generics.Collections;
@@ -81,27 +81,28 @@ resourcestring
   SGitCloneCommand = 'GIT.EXE clone --verbose --progress %s %s';
 
 type
-  TSpIDEType = (     // [IDE-Change-Update]
-    ideNone,         //
-    ideDelphi7,      // D7
-    ideDelphi2005,   // D9
-    ideDelphi2006,   // D10
-    ideDelphi2007,   // D11
-    ideDelphi2009,   // D12
-    ideDelphi2010,   // D14
-    ideDelphiXE,     // D15
-    ideDelphiXE2,    // D16
-    ideDelphiXE3,    // D17
-    ideDelphiXE4,    // D18
-    ideDelphiXE5,    // D19
-    ideDelphiXE6,    // D20
-    ideDelphiXE7,    // D21
-    ideDelphiXE8,    // D22
-    ideDelphiSeattle,// D23
-    ideDelphiBerlin, // D24
-    ideDelphiTokyo,  // D25
-    ideDelphiRio,    // D26
-    ideDelphiSydney  // D27
+  TSpIDEType = (         // [IDE-Change-Update]
+    ideNone,             //
+    ideDelphi7,          // D7
+    ideDelphi2005,       // D9
+    ideDelphi2006,       // D10
+    ideDelphi2007,       // D11
+    ideDelphi2009,       // D12
+    ideDelphi2010,       // D14
+    ideDelphiXE,         // D15
+    ideDelphiXE2,        // D16
+    ideDelphiXE3,        // D17
+    ideDelphiXE4,        // D18
+    ideDelphiXE5,        // D19
+    ideDelphiXE6,        // D20
+    ideDelphiXE7,        // D21
+    ideDelphiXE8,        // D22
+    ideDelphiSeattle,    // D23
+    ideDelphiBerlin,     // D24
+    ideDelphiTokyo,      // D25
+    ideDelphiRio,        // D26
+    ideDelphiSydney,     // D27
+    ideDelphiAlexandria  // D28
   );
 
   TSpIDETypeRec = record
@@ -133,7 +134,8 @@ const
     (IDEVersion: 'D24'; IDEName: 'RAD Studio 10.1 Berlin'; IDERegistryPath: 'SOFTWARE\Embarcadero\BDS\18.0'; IDERADStudioVersion: '18.0'),
     (IDEVersion: 'D25'; IDEName: 'RAD Studio 10.2 Tokyo'; IDERegistryPath: 'SOFTWARE\Embarcadero\BDS\19.0'; IDERADStudioVersion: '19.0'),
     (IDEVersion: 'D26'; IDEName: 'RAD Studio 10.3 Rio'; IDERegistryPath: 'SOFTWARE\Embarcadero\BDS\20.0'; IDERADStudioVersion: '20.0'),
-    (IDEVersion: 'D26'; IDEName: 'RAD Studio 10.4 Sydney'; IDERegistryPath: 'SOFTWARE\Embarcadero\BDS\21.0'; IDERADStudioVersion: '21.0')
+    (IDEVersion: 'D27'; IDEName: 'RAD Studio 10.4 Sydney'; IDERegistryPath: 'SOFTWARE\Embarcadero\BDS\21.0'; IDERADStudioVersion: '21.0'),
+    (IDEVersion: 'D28'; IDEName: 'RAD Studio 11 Alexandria'; IDERegistryPath: 'SOFTWARE\Embarcadero\BDS\22.0'; IDERADStudioVersion: '22.0')
   );
 
 type
@@ -214,7 +216,7 @@ type
   TSpComponentPackage = class
     Name: string;
     ZipFile: string;
-    Git : string;
+    Git: string;
     Destination: string;
     SearchPath: string;
     Includes: string;
@@ -1343,7 +1345,6 @@ begin
           end;
 
           Entry.ExecuteList.LoadFromIni(Filename, S);
-
           Add(Entry);
         end;
     end;

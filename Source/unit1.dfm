@@ -11,7 +11,6 @@ object Form1: TForm1
   Font.Height = -11
   Font.Name = 'MS Shell Dlg 2'
   Font.Style = []
-  OldCreateOrder = False
   Position = poScreenCenter
   OnCreate = FormCreate
   OnDestroy = FormDestroy
@@ -41,22 +40,28 @@ object Form1: TForm1
         Left = 8
         Top = 24
         Width = 473
-        Height = 227
-        OnClickCheck = CheckListBox1ClickCheck
+        Height = 201
         Style = lbOwnerDrawVariable
         TabOrder = 0
+        OnClickCheck = CheckListBox1ClickCheck
         OnDrawItem = CheckListBox1DrawItem
         OnMeasureItem = CheckListBox1MeasureItem
+      end
+      object CheckBox1: TCheckBox
+        Left = 8
+        Top = 231
+        Width = 249
+        Height = 17
+        Caption = 'Get files from GIT repository when available'
+        Checked = True
+        State = cbChecked
+        TabOrder = 1
       end
     end
     object TabSheet2: TTabSheet
       Caption = 'TabSheet2'
       ImageIndex = 1
       TabVisible = False
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       object Label2: TLabel
         Left = 8
         Top = 16
@@ -105,10 +110,6 @@ object Form1: TForm1
       Caption = 'TabSheet3'
       ImageIndex = 2
       TabVisible = False
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       object Label3: TLabel
         Left = 8
         Top = 8

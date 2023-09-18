@@ -1,3 +1,6 @@
+18 September 2023 - version 3.5.9
+  - Added GIT installation checking
+
 18 January 2022 - version 3.5.8
   - Added RAD Studio Alexandria support.
   - New checkbox added to prioritize GIT over ZIP, simplifying setup files, the setup files should include ZIP and GIT info.

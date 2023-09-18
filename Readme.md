@@ -1,6 +1,4 @@
-Silverpoint MultiInstaller
-==========================
-
+# Silverpoint MultiInstaller
 
 Silverpoint MultiInstaller is a multi component package installer for Embarcadero Delphi and C++Builder.
 It was created to ease the components installation on the IDE.
@@ -10,12 +8,11 @@ Just download the zips and select the destination folder, all the components wil
 It can also install multiple packages directly from GIT repositories.
 
 
-For more info go to:
-http://www.silverpointdevelopment.com
+For more info go to:  
+www.silverpointdevelopment.com
 
 
-License
--------
+## License
 
 The contents of this package are licensed under a disjunctive tri-license giving you the choice of one of the three following sets of free software/open source licensing terms:
 
@@ -31,15 +28,13 @@ Software is distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, eithe
 The initial developer of this package is Robert Lee.
 
 
-Installation
-------------
+## Installation
 
 Requirements:
 - RAD Studio XE or newer
 
 
-Getting Started
----------------
+## Getting Started
 
 To install a component pack with MultiInstaller you have to follow these steps:
 1) Read the licenses of the component packs you want to install.
@@ -55,12 +50,14 @@ For example, if you want to install TB2K + SpTBXLib:
 
 The installation folder will end up with this files:
 
-C:\MyInstall
-       |-  SpTBXLib.zip
-       |-  tb2k-2.2.2.zip
-       |-  TB2Kpatch-1.1.zip
-       |-  MultiInstaller.exe
-       |-  Setup.ini
+```
+C:\MyInstall  
+       |-  SpTBXLib.zip  
+       |-  tb2k-2.2.2.zip  
+       |-  TB2Kpatch-1.1.zip  
+       |-  MultiInstaller.exe  
+       |-  Setup.ini  
+```
 
 You are ready to install the component packages, just run the MultiInstaller, select the destination folder, and all the components will be unziped, patched, compiled and installed on the Delphi IDE.
 

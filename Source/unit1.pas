@@ -14,7 +14,7 @@ uses
   IniFiles, Actions, SpComponentInstaller;
 
 const
-  rvMultiInstallerVersion = 'Silverpoint MultiInstaller 3.5.8';
+  rvMultiInstallerVersion = 'Silverpoint MultiInstaller 3.5.9';
   rvMultiInstallerLink = 'http://www.silverpointdevelopment.com';
 
 resourcestring
@@ -26,10 +26,6 @@ resourcestring
   SCloseDelphi = 'Close Delphi to continue.';
   SErrorLabel = 'There were errors found in the setup, check the log.';
   SErrorInvalidBasePath = 'The directory doesn''t exist.';
-
-  SErrorDetectingBDSPROJECTSDIR = 'Silverpoint MultiInstaller couldn''t detect the $(BDSPROJECTSDIR) directory.' + #13#10 +
-                                  'You are probably using the Japanese version of Delphi 2009.' + #13#10 +
-                                  'Please, send a bug report to the author: ' + rvMultiInstallerLink;
 
 type
   TForm1 = class(TForm)

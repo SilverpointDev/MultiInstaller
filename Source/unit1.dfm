@@ -15,7 +15,6 @@ object Form1: TForm1
   OnCreate = FormCreate
   OnDestroy = FormDestroy
   OnShow = FormShow
-  PixelsPerInch = 96
   TextHeight = 13
   object PageControl1: TPageControl
     Left = 0
@@ -26,6 +25,8 @@ object Form1: TForm1
     Align = alClient
     Style = tsFlatButtons
     TabOrder = 0
+    ExplicitWidth = 491
+    ExplicitHeight = 264
     object TabSheet1: TTabSheet
       Caption = 'TabSheet1'
       TabVisible = False
@@ -148,6 +149,8 @@ object Form1: TForm1
     ParentBackground = False
     ParentColor = True
     TabOrder = 1
+    ExplicitTop = 324
+    ExplicitWidth = 491
     DesignSize = (
       495
       53)
@@ -183,13 +186,14 @@ object Form1: TForm1
       TabOrder = 3
     end
     object ButtonNext: TButton
-      Left = 315
+      Left = 311
       Top = 18
       Width = 75
       Height = 25
       Action = aNext
       Anchors = [akRight, akBottom]
       TabOrder = 0
+      ExplicitLeft = 307
     end
     object ButtonBack: TButton
       Left = 235
@@ -219,6 +223,7 @@ object Form1: TForm1
     Color = clWhite
     ParentBackground = False
     TabOrder = 2
+    ExplicitWidth = 491
     object LabelTitle: TLabel
       Left = 8
       Top = 15

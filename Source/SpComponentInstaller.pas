@@ -63,7 +63,8 @@ resourcestring
   SLogNotAGit = 'Error: %s is not a Git repository.';
   SLogNotInstallable = '%s is not installable. Proceeding without unzipping/cloning';
   SLogCorruptedZip = 'Error: %s is corrupted.';
-  SLogGitCloneFailed = 'Error: in git clone %s';
+  SLogGitCloneFailed = 'Error: in Git clone %s';
+  SLogGitNotInstalled = 'Error: Git not installed';
 
   SLogErrorCopying = 'Error copying %s to %s';
   SLogErrorDeleting = 'Error deleting %s';
@@ -79,6 +80,7 @@ resourcestring
   SLogFinished = 'All the component packages have been successfully installed.' + #13#10 + 'Elapsed time: %f secs.';
 
   SGitCloneCommand = 'GIT.EXE clone --verbose --progress %s %s';
+  SGitIsInstalledCommand = 'GIT.EXE --version';
 
 type
   TSpIDEType = (         // [IDE-Change-Update]
@@ -270,6 +272,7 @@ function SpExtractZip(ZipFilename, DestinationPath: string): Boolean;
 
 { Git }
 function SpGitClone(AGit, DestinationPath: string; Log: TStrings): Boolean;
+function SpIsGitInstalled(Log: TStrings): Boolean;
 
 { Ini and Registry }
 function SpReadRegValue(Key, Name: string; out Value: string): Boolean;
@@ -533,6 +536,15 @@ var
 begin
   CommandLine := Format(SGitCloneCommand, [AGit, DestinationPath]);
   Result := SpExecuteDosCommand(CommandLine, '', DosOutput) = 0;
+  if Assigned(Log) then
+    Log.Text := Log.Text + DosOutput + #13#10;
+end;
+
+function SpIsGitInstalled(Log: TStrings): Boolean;
+var
+  DosOutput: string;
+begin
+  Result := SpExecuteDosCommand(SGitIsInstalledCommand, '', DosOutput) = 0;
   if Assigned(Log) then
     Log.Text := Log.Text + DosOutput + #13#10;
 end;
@@ -1357,9 +1369,11 @@ end;
 function TSpComponentPackageList.ExtractAllZips(Source, Destination: string;
   Log: TStrings): Boolean;
 var
+  GitChecked: Boolean;
   I: integer;
   Item: TSpComponentPackage;
 begin
+  GitChecked := False;
   Result := False;
   SpWriteLog(Log, SLogStartUnzip, '');
 
@@ -1404,6 +1418,13 @@ begin
     end
     else
       if Item.Git <> '' then begin
+        if not GitChecked then begin
+          GitChecked := True;
+          if not SpIsGitInstalled(Log) then begin
+            SpWriteLog(Log, SLogGitCloneFailed, '');
+            Exit;
+          end;
+        end;
         SpWriteLog(Log, SLogGitCloning, Item.Git, Item.Destination);
         if not SpGitClone(Item.Git, Item.Destination, Log) then begin
           SpWriteLog(Log, SLogGitCloneFailed, Item.Git);

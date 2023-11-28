@@ -1,3 +1,8 @@
+28 November 2023 - version 3.5.10
+  - Added RAD Studio 12 Athens support.
+  - Improved IDE macros parsing speed.
+  - Added {$LIBSUFFIX AUTO} parsing (introduced on Delphi 10.4 Sydney).
+
 18 September 2023 - version 3.5.9
   - Added GIT installation checking
 

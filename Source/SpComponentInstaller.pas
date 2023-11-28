@@ -1,7 +1,7 @@
 unit SpComponentInstaller;
 
 {==============================================================================
-Version 3.5.8
+Version 3.5.10
 
 The contents of this package are licensed under a disjunctive tri-license
 giving you the choice of one of the three following sets of free
@@ -104,7 +104,8 @@ type
     ideDelphiTokyo,      // D25
     ideDelphiRio,        // D26
     ideDelphiSydney,     // D27
-    ideDelphiAlexandria  // D28
+    ideDelphiAlexandria, // D28
+    ideDelphiAthens      // D29
   );
 
   TSpIDETypeRec = record
@@ -137,18 +138,24 @@ const
     (IDEVersion: 'D25'; IDEName: 'RAD Studio 10.2 Tokyo'; IDERegistryPath: 'SOFTWARE\Embarcadero\BDS\19.0'; IDERADStudioVersion: '19.0'),
     (IDEVersion: 'D26'; IDEName: 'RAD Studio 10.3 Rio'; IDERegistryPath: 'SOFTWARE\Embarcadero\BDS\20.0'; IDERADStudioVersion: '20.0'),
     (IDEVersion: 'D27'; IDEName: 'RAD Studio 10.4 Sydney'; IDERegistryPath: 'SOFTWARE\Embarcadero\BDS\21.0'; IDERADStudioVersion: '21.0'),
-    (IDEVersion: 'D28'; IDEName: 'RAD Studio 11 Alexandria'; IDERegistryPath: 'SOFTWARE\Embarcadero\BDS\22.0'; IDERADStudioVersion: '22.0')
+    (IDEVersion: 'D28'; IDEName: 'RAD Studio 11 Alexandria'; IDERegistryPath: 'SOFTWARE\Embarcadero\BDS\22.0'; IDERADStudioVersion: '22.0'),
+    (IDEVersion: 'D29'; IDEName: 'RAD Studio 12 Athens'; IDERegistryPath: 'SOFTWARE\Embarcadero\BDS\23.0'; IDERADStudioVersion: '23.0')
   );
 
 type
   TSpIDEPersonality = (persDelphiWin32, persDelphiNET, persCPPBuilder);
 
   TSpDelphiIDE = class
+  private
+    class var FCachedMacrosCommaDelimited: string;
+    class var FCachedMacrosIDE: TSpIDEType;
+    class procedure GetMacros(IDE: TSpIDEType; NamesAndValues: TStringList);
   public
     // IDE
     class function Installed(IDE: TSpIDEType): Boolean;
     class function PersonalityInstalled(IDE: TSpIDEType; IDEPersonality: TSpIDEPersonality): Boolean;
     class function StringToIDEType(S: string): TSpIDEType;
+    class function IDEPackageVersion(IDE: TSpIDEType): string;
     class procedure IDEPersonalityTypeToString(A: TSpIDEPersonality; out IDERegName: string);
 
     // Path
@@ -175,8 +182,9 @@ type
     FOnlyDesigntime: Boolean;
     FDescription: string;
     FLibSuffix: string;
+    FIDEVersion: TSpIDEType;
     procedure CreateAndCopyEmptyResIfNeeded;
-    function RegisterPackage(IDE: TSpIDEType; Log: TStrings): Boolean;
+    function RegisterPackage(Log: TStrings): Boolean;
   public
     property DPKFilename: string read FDPKFilename;
     property BPLFilename: string read FBPLFilename;
@@ -185,8 +193,9 @@ type
     property OnlyDesigntime : Boolean read FOnlyDesigntime;
     property Description: string read FDescription;
     property LibSuffix: string read FLibSuffix;
-    constructor Create(const Filename: string); virtual;
-    function CompilePackage(DCC: string; IDE: TSpIDEType; SourcesL, IncludesL, Log: TStrings; TempDir: string = ''): Boolean;
+    property IDEVersion: TSpIDEType read FIDEVersion;
+    constructor Create(const Filename: string; IDE: TSpIDEType); virtual;
+    function CompilePackage(DCC: string; SourcesL, IncludesL, Log: TStrings; TempDir: string = ''): Boolean;
   end;
 
   TSpDelphiDPKFilesList = class(TObjectList<TSpDelphiDPKFile>)
@@ -769,6 +778,12 @@ begin
     end;
 end;
 
+class function TSpDelphiIDE.IDEPackageVersion(IDE: TSpIDEType): string;
+begin
+  // If IDEVersion is D28 the package version would be 280
+  Result := Copy(IDETypes[IDE].IDEVersion, 2, 3) + '0';
+end;
+
 class procedure TSpDelphiIDE.IDEPersonalityTypeToString(A: TSpIDEPersonality;
   out IDERegName: string);
 begin
@@ -853,8 +868,8 @@ begin
   end;
 end;
 
-class function TSpDelphiIDE.ExpandMacros(S: string; IDE: TSpIDEType): string;
-// Replace $(Delphi), $(BDS), $(BDSPROJECTSDIR), $(BDSCOMMONDIR),
+class procedure TSpDelphiIDE.GetMacros(IDE: TSpIDEType; NamesAndValues: TStringList);
+// Get $(Delphi), $(BDS), $(BDSPROJECTSDIR), $(BDSCOMMONDIR),
 // $(BDSUSERDIR), $(BDSLIB) macros and IDE Environment Variables Overrides
 // with full directory paths.
 
@@ -882,7 +897,7 @@ const
 var
   R, MyDocs: string;
   I: Integer;
-  DefaultL, OverrideL: TStringList;
+  DefaultL: TStringList;
 begin
   // In newer versions of RAD Studio (2007 and up) the macros are stored in:
   // C:\Users\x\AppData\Roaming\Embarcadero\BDS\19.0\environment.proj
@@ -893,26 +908,25 @@ begin
   // Variables.
   // So when the IDE is not running we can't use SysUtils.GetEnvironmentVariable.
 
-  Result := S;
+  NamesAndValues.Clear;
   if IDE = ideNone then Exit;
 
   DefaultL := TStringList.Create;
-  OverrideL := TStringList.Create;
   try
     // Try to read Environment.proj file
     ReadEnvironmentProj(IDE, DefaultL);
     // Get the Environment Variables Overrides
-    SpReadRegKey(IDETypes[IDE].IDERegistryPath + '\Environment Variables', OverrideL);
+    SpReadRegKey(IDETypes[IDE].IDERegistryPath + '\Environment Variables', NamesAndValues);
 
     // Override the default macros
     // $(Delphi)
-    if not ReplaceWithDefault(OverrideL, DefaultL, 'Delphi') then
-      OverrideL.Values['Delphi'] := GetIDEDir(IDE);
+    if not ReplaceWithDefault(NamesAndValues, DefaultL, 'Delphi') then
+      NamesAndValues.Values['Delphi'] := GetIDEDir(IDE);
 
     // $(BDS)
     if IDE >= ideDelphi2005 then
-      if not ReplaceWithDefault(OverrideL, DefaultL, 'BDS') then
-        OverrideL.Values['BDS'] := GetIDEDir(IDE);
+      if not ReplaceWithDefault(NamesAndValues, DefaultL, 'BDS') then
+        NamesAndValues.Values['BDS'] := GetIDEDir(IDE);
 
     // $(BDSCOMMONDIR)
     // It points to a different directory according to how you install Delphi:
@@ -921,7 +935,7 @@ begin
     // If you choose Just Me during installation:
     //   C:\Users\x\Documents\Embarcadero\Studio\19.0
     if IDE >= ideDelphi2007 then
-      ReplaceWithDefault(OverrideL, DefaultL, 'BDSCOMMONDIR');
+      ReplaceWithDefault(NamesAndValues, DefaultL, 'BDSCOMMONDIR');
 
     // $(BDSPROJECTSDIR)
     // Example: C:\Users\x\Documents\Embarcadero\Studio\Projects
@@ -931,7 +945,7 @@ begin
       // HKCU\Software\Borland\BDS\4.0\Globals
       SpReadRegValue(IDETypes[IDE].IDERegistryPath + '\Globals', 'DefaultProjectsDirectory', R);
       if not TDirectory.Exists(R) then
-        if not ReplaceWithDefault(OverrideL, DefaultL, 'BDSPROJECTSDIR') then begin
+        if not ReplaceWithDefault(NamesAndValues, DefaultL, 'BDSPROJECTSDIR') then begin
           // Try to guess it
           // Since BDSPROJECTSDIR is not defined in the registry we have to find it
           // manually, looking for all the localized dir names in MyDocuments folder
@@ -955,40 +969,64 @@ begin
             end;
           end;
           if TDirectory.Exists(R) then
-            OverrideL.Values['BDSPROJECTSDIR'] := R;
+            NamesAndValues.Values['BDSPROJECTSDIR'] := R;
         end;
     end;
 
     // $(BDSUSERDIR)
     // Example: C:\Users\x\Documents\Embarcadero\Studio\19.0
     if IDE >= ideDelphi2007 then
-      if not ReplaceWithDefault(OverrideL, DefaultL, 'BDSUSERDIR') then begin
+      if not ReplaceWithDefault(NamesAndValues, DefaultL, 'BDSUSERDIR') then begin
         // Try to guess it
         // Get BDSPROJECTSDIR and add IDE version
-        R := OverrideL.Values['BDSPROJECTSDIR'];
+        R := NamesAndValues.Values['BDSPROJECTSDIR'];
         if TDirectory.Exists(R) then begin
           R := TPath.Combine(ExtractFilePath(R), IDETypes[IDE].IDERADStudioVersion);
           if TDirectory.Exists(R) then
-            OverrideL.Values['BDSUSERDIR'] := R;
+            NamesAndValues.Values['BDSUSERDIR'] := R;
         end;
       end;
 
     // $(BDSLIB)
     // Example: C:\Program Files\Embarcadero\Studio\19.0\lib
-    if not ReplaceWithDefault(OverrideL, DefaultL, 'BDSLIB') then
-      OverrideL.Values['BDSLIB'] := TPath.Combine(GetIDEDir(IDE), 'lib');
+    if not ReplaceWithDefault(NamesAndValues, DefaultL, 'BDSLIB') then
+      NamesAndValues.Values['BDSLIB'] := TPath.Combine(GetIDEDir(IDE), 'lib');
 
     // $(PLATFORM)
     // Not sure were to find this macro
     // Since we're using DCC32 to compile assume Win32
-    OverrideL.Values['PLATFORM'] := 'Win32';
+    NamesAndValues.Values['PLATFORM'] := 'Win32';
 
-    // Replace all
-    for I := 0 to OverrideL.Count - 1 do
-      Result := StringReplace(Result, '$(' + OverrideL.Names[I] + ')', ExcludeTrailingPathDelimiter(OverrideL.ValueFromIndex[I]), [rfReplaceAll, rfIgnoreCase]);
+    FCachedMacrosCommaDelimited := NamesAndValues.CommaText;
+    FCachedMacrosIDE := IDE;
   finally
     DefaultL.Free;
-    OverrideL.Free;
+  end;
+end;
+
+class function TSpDelphiIDE.ExpandMacros(S: string; IDE: TSpIDEType): string;
+// Replace $(Delphi), $(BDS), $(BDSPROJECTSDIR), $(BDSCOMMONDIR),
+// $(BDSUSERDIR), $(BDSLIB) macros and IDE Environment Variables Overrides
+// with full directory paths.
+// S string can be a single path or multiple comma separated paths
+var
+  I: Integer;
+  L: TStringList;
+begin
+  Result := S;
+  if IDE = ideNone then Exit;
+
+  L := TStringList.Create;
+  try
+    if (FCachedMacrosIDE = IDE) and not FCachedMacrosCommaDelimited.IsEmpty then
+      L.CommaText := FCachedMacrosCommaDelimited  // use the cached macros
+    else
+      GetMacros(IDE, L);
+    // Replace all
+    for I := 0 to L.Count - 1 do
+      Result := StringReplace(Result, '$(' + L.Names[I] + ')', ExcludeTrailingPathDelimiter(L.ValueFromIndex[I]), [rfReplaceAll, rfIgnoreCase]);
+  finally
+    L.Free;
   end;
 end;
 
@@ -1041,21 +1079,20 @@ end;
 //WMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWM
 { TSpDelphiDPKFile }
 
-constructor TSpDelphiDPKFile.Create(const Filename: string);
+constructor TSpDelphiDPKFile.Create(const Filename: string; IDE: TSpIDEType);
 var
   L: TStringList;
   P, P2: Integer;
-  Suffix: string;
 begin
-  FDPKFilename := Filename;
+  FDPKFilename := '';
   FBPLFilename := '';
   FExists := False;
   FOnlyRuntime := False;
   FOnlyDesigntime := False;
   FDescription := '';
   FLibSuffix := '';
+  FIDEVersion := IDE;
 
-  Suffix := '';
   if TFile.Exists(Filename) then begin
     FDPKFilename := Filename;
     FBPLFilename := TPath.ChangeExtension(TPath.GetFileName(Filename), 'bpl');
@@ -1076,14 +1113,26 @@ begin
         if P2 > 0 then
           FDescription := Copy(L.Text, P, P2 - P);
       end;
-      P := Pos('{$LIBSUFFIX ''', L.Text); // {$LIBSUFFIX '100'}  //  file100.bpl
+
+      // Try to parse $LIBSUFFIX
+      // Won't work if there are nested $IFDEFs, for example:
+      //   {$IFDEF VER340} {$LIBSUFFIX '270'} {$ENDIF}
+      //   {$IFDEF VER350} {$LIBSUFFIX '280'} {$ENDIF}
+      // Delphi 10.4 Sydney added the AUTO option: {$LIBSUFFIX AUTO}
+      P := Pos('{$LIBSUFFIX AUTO}', L.Text);
       if P > 0 then begin
-        P := P + Length('{$LIBSUFFIX ''');
-        P2 := PosEx('''}', L.Text, P);
-        if P2 > 0 then begin
-          Suffix := Copy(L.Text, P, P2 - P);
-          // Rename BPL filename to include the suffix
-          FBPLFilename := TPath.GetFileNameWithoutExtension(FBPLFilename) + Suffix + TPath.GetExtension(FBPLFilename);
+        FLibSuffix := 'AUTO';
+        FBPLFilename := TPath.GetFileNameWithoutExtension(DPKFilename) + TSpDelphiIDE.IDEPackageVersion(IDE) + '.bpl';
+      end
+      else begin
+        P := Pos('{$LIBSUFFIX ''', L.Text); // {$LIBSUFFIX '280'} for example: file280.bpl
+        if P > 0 then begin
+          P := P + Length('{$LIBSUFFIX ''');
+          P2 := PosEx('''}', L.Text, P);
+          if P2 > 0 then begin
+            FLibSuffix := Copy(L.Text, P, P2 - P);
+            FBPLFilename := TPath.GetFileNameWithoutExtension(DPKFilename) + FLibSuffix + '.bpl';
+          end;
         end;
       end;
 
@@ -1113,7 +1162,7 @@ begin
   end;
 end;
 
-function TSpDelphiDPKFile.CompilePackage(DCC: string; IDE: TSpIDEType; SourcesL,
+function TSpDelphiDPKFile.CompilePackage(DCC: string; SourcesL,
   IncludesL, Log: TStrings; TempDir: string): Boolean;
 // DCC = full path of dcc32.exe, e.g. 'C:\Program Files\Borland\Delphi7\Bin\dcc32.exe
 // IDE = IDE version to compile with
@@ -1128,7 +1177,7 @@ var
   S, R: string; // Auxiliary strings
 begin
   Result := False;
-  if IDE = ideNone then Exit;
+  if FIDEVersion = ideNone then Exit;
   if not Exists then begin
     if Assigned(Log) then
       SpWriteLog(Log, SLogInvalidPath, FDPKFilename);
@@ -1156,12 +1205,12 @@ begin
     L := TStringList.Create;
     try
       // Add the SourcesL directories to the registry
-      TSpDelphiIDE.AddToSearchPath(SourcesL, IDE);
+      TSpDelphiIDE.AddToSearchPath(SourcesL, FIDEVersion);
 
       // Expand SearchPath, replace $(Delphi) and $(BDS) with real directories
       // and enclose the paths with " " to transform it to a valid
       // comma delimited string for the -U switch.
-      L.Text := TSpDelphiIDE.ExpandMacros(TSpDelphiIDE.GetSearchPath(IDE, False), IDE);
+      L.Text := TSpDelphiIDE.ExpandMacros(TSpDelphiIDE.GetSearchPath(FIDEVersion, False), FIDEVersion);
       L.Text := StringReplace(L.Text, ';', #13#10, [rfReplaceAll, rfIgnoreCase]);
       for I := 0 to L.Count - 1 do
         L[I] := '"' + L[I] + '"';
@@ -1171,7 +1220,7 @@ begin
 
       // Save the DCC32.CFG file on the Package directory
       DCCConfig := TPath.Combine(WorkDir, 'DCC32.CFG');
-      R := IDETypes[IDE].IDERegistryPath;
+      R := IDETypes[FIDEVersion].IDERegistryPath;
       L.Clear;
       // SearchPath
       L.Add('-U' + S);
@@ -1185,17 +1234,17 @@ begin
         L.Add('-R' + S);
       end;
       // BPL Output
-      S := TSpDelphiIDE.GetBPLOutputDir(IDE);
+      S := TSpDelphiIDE.GetBPLOutputDir(FIDEVersion);
       L.Add('-LE"' + S + '"');
       // DCP Output
-      S := TSpDelphiIDE.GetDCPOutputDir(IDE);
+      S := TSpDelphiIDE.GetDCPOutputDir(FIDEVersion);
       L.Add('-LN"' + S + '"');
       // BPI Output for the compiled packages, required for C++Builder 2006 and above,
       // same as DCP Output
-      if IDE >= ideDelphi2006 then
+      if FIDEVersion >= ideDelphi2006 then
         L.Add('-NB"' + S + '"');
       // Unit namespaces for Delphi XE2:
-      if IDE >= ideDelphiXE2 then
+      if FIDEVersion >= ideDelphiXE2 then
         L.Add('-NSSystem.Win;Data.Win;Datasnap.Win;Web.Win;Soap.Win;Xml.Win;Bde;Vcl;Vcl.Imaging;Vcl.Touch;Vcl.Samples;Vcl.Shell;System;Xml;Data;Datasnap;Web;Soap;Winapi');
       // Includes, dcc32.exe accepts Includes as a semicolon separated string
       // enclosed by double quotes, e.g. "C:\dir1;C:\dir2;C:\dir3"
@@ -1213,8 +1262,8 @@ begin
       // Add -JL compiler switch to make Hpp files required for C++Builder 2006 and above
       // This switch is undocumented:
       // http://groups.google.com/group/borland.public.cppbuilder.ide/browse_thread/thread/456bece4c5665459/0c4c61ecec179ca8
-      if IDE >= ideDelphi2006 then
-        if TSpDelphiIDE.PersonalityInstalled(IDE, persCPPBuilder) then
+      if FIDEVersion >= ideDelphi2006 then
+        if TSpDelphiIDE.PersonalityInstalled(FIDEVersion, persCPPBuilder) then
           L.Add('-JL');
 
       L.SaveToFile(DCCConfig);
@@ -1233,7 +1282,7 @@ begin
       if Assigned(Log) then
         Log.Text := Log.Text + DosOutput + #13#10;
       if Result then
-        Result := RegisterPackage(IDE, Log);
+        Result := RegisterPackage(Log);
     finally
       DeleteFile(DCCConfig);
     end;
@@ -1243,18 +1292,17 @@ begin
     SpWriteLog(Log, SLogErrorCompiling, FDPKFilename, '');
 end;
 
-function TSpDelphiDPKFile.RegisterPackage(IDE: TSpIDEType;
-  Log: TStrings): Boolean;
+function TSpDelphiDPKFile.RegisterPackage(Log: TStrings): Boolean;
 var
   BPL, RegKey: string;
 begin
   Result := False;
-  if IDE = ideNone then Exit;
+  if FIDEVersion = ideNone then Exit;
 
   // BPL filename
-  BPL := TPath.Combine(TSpDelphiIDE.GetBPLOutputDir(IDE), FBPLFilename);
+  BPL := TPath.Combine(TSpDelphiIDE.GetBPLOutputDir(FIDEVersion), FBPLFilename);
 
-  RegKey := IDETypes[IDE].IDERegistryPath + '\Known Packages';
+  RegKey := IDETypes[FIDEVersion].IDERegistryPath + '\Known Packages';
 
   if FOnlyRuntime then begin
     SpDeleteRegValue(RegKey, BPL);
@@ -1329,7 +1377,7 @@ begin
     S := F.ReadString(rvOptionsIniSection, rvMinimumIDE, '');
     FMinimumIDE := TSpDelphiIDE.StringToIDEType(S);
     if FMinimumIDE = ideNone then
-      FMinimumIDE := ideDelphi7;
+      FMinimumIDE := TSpIDEType(1);
 
     // Read Component Packages
     F.ReadSections(LSections);
@@ -1510,7 +1558,7 @@ begin
               try
                 CompileL.CommaText := Item.PackageList[IDE];
                 for J := 0 to CompileL.Count - 1 do
-                  DPKList.Add(TSpDelphiDPKFile.Create(TPath.Combine(Item.Destination, CompileL[J])));
+                  DPKList.Add(TSpDelphiDPKFile.Create(TPath.Combine(Item.Destination, CompileL[J]), IDE));
               finally
                 CompileL.Free;
               end;
@@ -1520,7 +1568,7 @@ begin
               IncludesL.CommaText := StringReplace(Item.Includes, rvBaseFolder, ExcludeTrailingPathDelimiter(BaseFolder), [rfReplaceAll, rfIgnoreCase]);
               // Compile and Install
               for J := 0 to DPKList.Count - 1 do
-                if not DPKList[J].CompilePackage(DCC, IDE, SourcesL, IncludesL, Log, TempDir) then
+                if not DPKList[J].CompilePackage(DCC, SourcesL, IncludesL, Log, TempDir) then
                   Exit;
             finally
               IncludesL.Free;

@@ -1,7 +1,6 @@
-object Form1: TForm1
+object FormInstall: TFormInstall
   Left = 293
   Top = 145
-  BorderStyle = bsDialog
   Caption = 'Silverpoint MultiInstaller'
   ClientHeight = 378
   ClientWidth = 495
@@ -21,123 +20,141 @@ object Form1: TForm1
     Top = 60
     Width = 495
     Height = 265
-    ActivePage = TabSheet1
+    ActivePage = tshSelectComponents
     Align = alClient
     Style = tsFlatButtons
     TabOrder = 0
-    object TabSheet1: TTabSheet
-      Caption = 'TabSheet1'
+    object tshSelectComponents: TTabSheet
+      Caption = 'tshSelectComponents'
       TabVisible = False
-      object Label1: TLabel
+      DesignSize = (
+        487
+        255)
+      object lblSelectComponents: TLabel
         Left = 8
         Top = 8
         Width = 276
         Height = 13
+        Anchors = [akLeft, akTop, akRight]
         Caption = 'You'#39're about to install the following component packages:'
       end
-      object CheckListBox1: TCheckListBox
+      object clbSelectComponents: TCheckListBox
         Left = 8
         Top = 24
         Width = 473
         Height = 201
+        Anchors = [akLeft, akTop, akRight, akBottom]
         Style = lbOwnerDrawVariable
         TabOrder = 0
-        OnClickCheck = CheckListBox1ClickCheck
-        OnDrawItem = CheckListBox1DrawItem
-        OnMeasureItem = CheckListBox1MeasureItem
+        OnClickCheck = clbSelectComponentsClickCheck
+        OnDrawItem = clbSelectComponentsDrawItem
+        OnMeasureItem = clbSelectComponentsMeasureItem
       end
-      object CheckBox1: TCheckBox
-        Left = 8
+      object chkGetFromGit: TCheckBox
+        Left = 231
         Top = 231
         Width = 249
         Height = 17
+        Anchors = [akLeft, akBottom]
         Caption = 'Get files from GIT repository when available'
-        Checked = True
-        State = cbChecked
+        Enabled = False
         TabOrder = 1
       end
+      object chkSelectAllNone: TCheckBox
+        Left = 8
+        Top = 231
+        Width = 97
+        Height = 17
+        Anchors = [akLeft, akBottom]
+        Caption = 'Select all/none'
+        TabOrder = 2
+        OnClick = chkSelectAllNoneClick
+      end
     end
-    object TabSheet2: TTabSheet
-      Caption = 'TabSheet2'
+    object tshSelectIde: TTabSheet
+      Caption = 'tshSelectIde'
       ImageIndex = 1
       TabVisible = False
-      object Label2: TLabel
+      DesignSize = (
+        487
+        255)
+      object lblInstallfolder: TLabel
         Left = 8
         Top = 16
-        Width = 323
+        Width = 358
         Height = 13
+        Anchors = [akLeft, akTop, akRight]
         Caption = 
           'Select a destination directory to install all the component pack' +
-          'ages:'
+          'age sources:'
       end
-      object InstallFolderEdit: TEdit
+      object edtInstallFolder: TEdit
         Left = 8
         Top = 42
         Width = 393
         Height = 21
+        Anchors = [akLeft, akTop, akRight]
         TabOrder = 0
       end
-      object ButtonBrowse: TButton
+      object btnInstallFolder: TButton
         Left = 408
         Top = 40
         Width = 75
         Height = 25
         Action = aBrowse
+        Anchors = [akTop, akRight]
         TabOrder = 1
       end
-      object RadioGroup1: TRadioGroup
+      object rgSelectIde: TRadioGroup
         Left = 8
         Top = 80
         Width = 473
         Height = 171
-        Caption = '  '
+        Anchors = [akLeft, akTop, akRight, akBottom]
+        Caption = '  Select target IDE'
         Columns = 2
-        Enabled = False
         TabOrder = 2
       end
-      object CompileCheckbox: TCheckBox
-        Left = 20
-        Top = 78
-        Width = 195
-        Height = 17
-        Caption = 'Compile packages and install on IDE'
-        TabOrder = 3
-        OnClick = CompileCheckboxClick
-      end
     end
-    object TabSheet3: TTabSheet
-      Caption = 'TabSheet3'
+    object tshInstallation: TTabSheet
+      Caption = 'tshInstallation'
       ImageIndex = 2
       TabVisible = False
-      object Label3: TLabel
+      DesignSize = (
+        487
+        255)
+      object lblInstallation: TLabel
         Left = 8
         Top = 8
         Width = 74
         Height = 13
+        Anchors = [akLeft, akTop, akRight]
         Caption = 'Installation log:'
       end
-      object FinishLabel: TLabel
+      object lblInstallationFinished: TLabel
         Left = 8
         Top = 238
         Width = 427
         Height = 13
+        Anchors = [akLeft, akRight, akBottom]
         Caption = 
           'Setup has finished installing the components on your computer. C' +
           'lick Finish to exit Setup.'
         Visible = False
       end
-      object LogMemo: TMemo
+      object memInstallationLog: TMemo
         Left = 8
         Top = 32
         Width = 473
         Height = 193
+        Anchors = [akLeft, akTop, akRight, akBottom]
         ReadOnly = True
         ScrollBars = ssBoth
         TabOrder = 0
       end
     end
   end
-  object Panel1: TPanel
+  object pnlBottom: TPanel
     Left = 0
     Top = 325
     Width = 495
@@ -150,39 +167,43 @@ object Form1: TForm1
     DesignSize = (
       495
       53)
-    object Bevel2: TBevel
+    object bvlBottom: TBevel
       Left = 162
       Top = 0
       Width = 322
       Height = 9
+      Anchors = [akLeft, akRight, akBottom]
       Shape = bsBottomLine
     end
-    object PaintBoxLabel: TPaintBox
+    object pbxVersionInfo: TPaintBox
       Left = 15
       Top = 0
-      Width = 144
+      Width = 150
       Height = 14
-      OnClick = PaintBoxLabelClick
-      OnPaint = PaintBoxLabelPaint
+      Anchors = [akLeft, akBottom]
+      OnClick = pbxVersionInfoClick
+      OnPaint = pbxVersionInfoPaint
     end
-    object Button1: TButton
+    object btnSaveLog: TButton
       Left = 315
       Top = 18
       Width = 75
       Height = 25
       Action = aSaveLog
+      Anchors = [akRight, akBottom]
       TabOrder = 4
     end
-    object ButtonFinish: TButton
+    object btnFinish: TButton
       Left = 410
       Top = 18
       Width = 75
       Height = 25
       Action = aFinish
+      Anchors = [akRight, akBottom]
       TabOrder = 3
     end
-    object ButtonNext: TButton
-      Left = 311
+    object btnNext: TButton
+      Left = 315
       Top = 18
       Width = 75
       Height = 25
@@ -190,25 +211,27 @@ object Form1: TForm1
       Anchors = [akRight, akBottom]
       TabOrder = 0
     end
-    object ButtonBack: TButton
+    object btnBack: TButton
       Left = 235
       Top = 18
       Width = 75
       Height = 25
       Action = aBack
+      Anchors = [akRight, akBottom]
       Enabled = False
       TabOrder = 1
     end
-    object ButtonCancel: TButton
+    object btnCancel: TButton
       Left = 410
       Top = 18
       Width = 75
       Height = 25
       Action = aCancel
+      Anchors = [akRight, akBottom]
       TabOrder = 2
     end
   end
-  object Panel2: TPanel
+  object pnlTop: TPanel
     Left = 0
     Top = 0
     Width = 495
@@ -218,11 +241,15 @@ object Form1: TForm1
     Color = clWhite
     ParentBackground = False
     TabOrder = 2
-    object LabelTitle: TLabel
+    DesignSize = (
+      495
+      60)
+    object lblTitle: TLabel
       Left = 8
       Top = 15
       Width = 425
       Height = 29
+      Anchors = [akLeft, akTop, akRight]
       AutoSize = False
       Caption = 'Title'
       Font.Charset = ANSI_CHARSET
@@ -234,7 +261,7 @@ object Form1: TForm1
       Layout = tlCenter
       WordWrap = True
     end
-    object Bevel1: TBevel
+    object bvlTop: TBevel
       Left = 0
       Top = 51
       Width = 495
@@ -242,11 +269,12 @@ object Form1: TForm1
       Align = alBottom
       Shape = bsBottomLine
     end
-    object Image1: TImage
+    object imgLogo: TImage
       Left = 442
       Top = 5
       Width = 48
       Height = 48
+      Anchors = [akTop, akRight]
       AutoSize = True
       Picture.Data = {
         07544269746D6170361B0000424D361B00000000000036000000280000003000

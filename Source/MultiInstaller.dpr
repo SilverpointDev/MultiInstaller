@@ -2,13 +2,13 @@ program MultiInstaller;
 
 uses
   Forms,
-  unit1 in 'unit1.pas' {Form1};
+  Form.Installer in 'Form.Installer.pas' {FormInstall};
 
 {$R *.res}
 
 begin
   Application.Initialize;
   Application.MainFormOnTaskbar := True;
-  Application.CreateForm(TForm1, Form1);
+  Application.CreateForm(TFormInstall, FormInstall);
   Application.Run;
 end.

@@ -1,3 +1,8 @@
+9 March 2026 - version 3.6
+  - Added RAD Studio 13 Florence support.
+  - Added 64 bit support.
+  - Removed support for older versions of Rad Studio. The minimum supported version is XE2.
+
 28 November 2023 - version 3.5.10
   - Added RAD Studio 12 Athens support.
   - Improved IDE macros parsing speed.

@@ -1,7 +1,7 @@
 unit SpComponentInstaller;
 
 {==============================================================================
-Version 3.6
+Version 3.6.0
 
 The contents of this package are licensed under a disjunctive tri-license
 giving you the choice of one of the three following sets of free

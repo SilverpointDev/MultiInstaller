@@ -1,4 +1,4 @@
-9 March 2026 - version 3.6
+9 March 2026 - version 3.6.0
   - Added RAD Studio 13 Florence support.
   - Added 64 bit support.
   - Removed support for older versions of Rad Studio. The minimum supported version is XE2.

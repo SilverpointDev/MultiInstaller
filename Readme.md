@@ -31,7 +31,7 @@ The initial developer of this package is Robert Lee.
 ## Installation
 
 Requirements:
-- RAD Studio XE or newer
+- RAD Studio XE2 or newer
 
 
 ## Getting Started
@@ -54,7 +54,6 @@ The installation folder will end up with this files:
 C:\MyInstall  
        |-  SpTBXLib.zip  
        |-  tb2k-2.2.2.zip  
-       |-  TB2Kpatch-1.1.zip  
        |-  MultiInstaller.exe  
        |-  Setup.ini  
 ```

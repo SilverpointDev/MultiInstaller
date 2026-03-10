@@ -14,7 +14,7 @@ uses
   IniFiles, Actions, SpComponentInstaller;
 
 const
-  rvMultiInstallerVersion = 'Silverpoint MultiInstaller 3.6';
+  rvMultiInstallerVersion = 'Silverpoint MultiInstaller 3.6.0';
   rvMultiInstallerLink = 'http://www.silverpointdevelopment.com';
 
 resourcestring

@@ -67,6 +67,7 @@ resourcestring
   SLogNotInstallable = '%s is not installable. Proceeding without unzipping/cloning';
   SLogCorruptedZip = 'Error: %s is corrupted.';
   SLogGitCloneFailed = 'Error: in Git clone %s';
+  SLogGitPullFailed = 'Error: in Git pull %s';
   SLogGitNotInstalled = 'Error: Git not installed';
   SLogErrorNoPackage = 'Error: No package defined for %s';
 
@@ -79,12 +80,14 @@ resourcestring
   SLogCopying = 'Copying:' + sLineBreak + '     %s' + sLineBreak + 'To:' + sLineBreak + '     %s';
   SLogExecuting = 'Executing:' + sLineBreak + '     %s';
   SLogExtracting = 'Extracting:' + sLineBreak + '     %s' + sLineBreak + 'To:' + sLineBreak + '     %s';
+  SLogGitPulling = 'Git pulling:' + sLineBreak + '     %s' + sLineBreak + 'To:' + sLineBreak + '     %s';
   SLogGitCloning = 'Git cloning:' + sLineBreak + '     %s' + sLineBreak + 'To:' + sLineBreak + '     %s';
   SLogCompiling = 'Compiling %s package for %s' + sLineBreak + 'Package: %s';
   SLogInstalling = 'Installing %s package for %s' + sLineBreak + 'Package: %s';
   SLogFinished = 'All the component packages have been successfully installed.' + sLineBreak + 'Elapsed time: %f secs.';
 
   SGitCloneCommand = 'GIT.EXE clone --verbose --progress "%s" "%s"';
+  SGitPullCommand = 'GIT.EXE pull --verbose --progress';
   SGitIsInstalledCommand = 'GIT.EXE --version';
 
 type
@@ -261,6 +264,7 @@ function SpExtractZip(ZipFilename, DestinationPath: string): Boolean;
 
 { Git }
 function SpGitClone(AGit, DestinationPath: string; Log: TStrings): Boolean;
+function SpGitPull(DestinationPath: string; Log: TStrings): Boolean;
 function SpIsGitInstalled(Log: TStrings): Boolean;
 
 { Ini and Registry }
@@ -602,6 +606,22 @@ begin
   Result := SpExecuteDosCommand(CommandLine, '', DosOutput) = 0;
   if Assigned(Log) then
     Log.Text := Log.Text + DosOutput + sLineBreak;
+end;
+
+function SpGitPull(DestinationPath: string; Log: TStrings): Boolean;
+var
+  CommandLine, DosOutput, CurrentDir: string;
+begin
+  CurrentDir := TDirectory.GetCurrentDirectory;
+  try
+    TDirectory.SetCurrentDirectory(DestinationPath);
+    CommandLine := Format(SGitPullCommand, [DestinationPath]);
+    Result := SpExecuteDosCommand(CommandLine, '', DosOutput) = 0;
+    if Assigned(Log) then
+      Log.Text := Log.Text + DosOutput + sLineBreak;
+  finally
+    TDirectory.SetCurrentDirectory(CurrentDir);
+  end;
 end;
 
 function SpIsGitInstalled(Log: TStrings): Boolean;
@@ -1622,11 +1642,23 @@ begin
                   Exit;
                 end;
             end;
-          SpWriteLog(Log, SLogGitCloning, [Item.Git, Item.Destination]);
-          if not SpGitClone(Item.Git, Item.Destination, Log) then
+          if TDirectory.Exists(TPath.Combine(Item.Destination, '.git')) then
             begin
-              SpWriteLog(Log, SLogGitCloneFailed, [Item.Git]);
-              Exit;
+              SpWriteLog(Log, SLogGitPulling, [Item.Git, Item.Destination]);
+              if not SpGitPull(Item.Destination, Log) then
+                begin
+                  SpWriteLog(Log, SLogGitPullFailed, [Item.Git]);
+                  Exit;
+                end;
+            end
+          else
+            begin
+              SpWriteLog(Log, SLogGitCloning, [Item.Git, Item.Destination]);
+              if not SpGitClone(Item.Git, Item.Destination, Log) then
+                begin
+                  SpWriteLog(Log, SLogGitCloneFailed, [Item.Git]);
+                  Exit;
+                end;
             end;
         end
       else

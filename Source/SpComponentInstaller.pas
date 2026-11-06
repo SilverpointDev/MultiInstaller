@@ -1638,7 +1638,7 @@ begin
               GitChecked := True;
               if not SpIsGitInstalled(Log) then
                 begin
-                  SpWriteLog(Log, SLogGitCloneFailed, [Item.Git]);
+                  SpWriteLog(Log, SLogGitNotInstalled, [Item.Git]);
                   Exit;
                 end;
             end;

@@ -66,17 +66,20 @@ resourcestring
   SLogNotInstallable = '%s is not installable. Proceeding without unzipping/cloning';
   SLogCorruptedZip = 'Error: %s is corrupted.';
   SLogGitCloneFailed = 'Error: in Git clone %s';
+  SLogGitPullFailed = 'Error: in Git pull %s';
   SLogGitNotInstalled = 'Error: Git not installed';
 
   SLogErrorCopying = 'Error copying %s to %s';
   SLogErrorDeleting = 'Error deleting %s';
   SLogErrorExecuting = 'Error executing %s';
   SLogErrorCompiling = 'Error compiling %s';
+  SLogErrorRegistering = 'Error registering %s';
 
-  SLogCopying = 'Copying:' +  #13#10 + '     %s' + #13#10 + 'To:' + #13#10 + '     %s';
-  SLogExecuting = 'Executing:' +  #13#10 + '     %s';
-  SLogExtracting = 'Extracting:' +  #13#10 + '     %s' + #13#10 + 'To:' + #13#10 + '     %s';
-  SLogGitCloning = 'Git cloning:' +  #13#10 + '     %s' + #13#10 + 'To:' + #13#10 + '     %s';
+  SLogCopying = 'Copying:' + #13#10 + '     %s' + #13#10 + 'To:' + #13#10 + '     %s';
+  SLogExecuting = 'Executing:' + #13#10 + '     %s';
+  SLogExtracting = 'Extracting:' + #13#10 + '     %s' + #13#10 + 'To:' + #13#10 + '     %s';
+  SLogGitCloning = 'Git cloning:' + #13#10 + '     %s' + #13#10 + 'To:' + #13#10 + '     %s';
+  SLogGitPulling = 'Git pulling:' + #13#10 + '     %s' + #13#10 + 'To:' + #13#10 + '     %s';
   SLogCompiling = '-----------------------------------------' + #13#10 +
                   'Compiling %s %s Package: %s';
   SLogInstalling = 'Installing %s %s Package: %s';
@@ -278,6 +281,7 @@ function SpExtractZip(ZipFilename, DestinationPath: string): Boolean;
 
 { Git }
 function SpGitClone(AGit, DestinationPath: string; Log: TStrings): Boolean;
+function SpGitPull(DestinationPath: string; Log: TStrings): Boolean;
 function SpIsGitInstalled(Log: TStrings): Boolean;
 
 { Ini and Registry }
@@ -318,6 +322,7 @@ const
   rvDefaultInstallFolder = 'DefaultInstallFolder';
   rvMinimumIDE = 'MinimumIDEVersion';
   rvGitCloneCommand = 'GIT.EXE clone --verbose --progress %s %s';
+  rvGitPullCommand = 'GIT.EXE pull --verbose --progress';
   rvGitIsInstalledCommand = 'GIT.EXE --version';
   ActionTypes: array [TSpActionType] of string = ('none', 'copy', 'copyandrun', 'run');
   IDEPersonalityRegNameTypes: array [TSpIDEPersonality] of string = ('Delphi.Win32', 'Delphi.NET', 'BCB');
@@ -531,6 +536,22 @@ begin
   Result := SpExecuteDosCommand(CommandLine, '', DosOutput) = 0;
   if Assigned(Log) then
     Log.Text := Log.Text + DosOutput + #13#10;
+end;
+
+function SpGitPull(DestinationPath: string; Log: TStrings): Boolean;
+var
+  CommandLine, DosOutput, CurrentDir: string;
+begin
+  CurrentDir := TDirectory.GetCurrentDirectory;
+  try
+    TDirectory.SetCurrentDirectory(DestinationPath);
+    CommandLine := Format(rvGitPullCommand, [DestinationPath]);
+    Result := SpExecuteDosCommand(CommandLine, '', DosOutput) = 0;
+    if Assigned(Log) then
+      Log.Text := Log.Text + DosOutput + #13#10;
+  finally
+    TDirectory.SetCurrentDirectory(CurrentDir);
+  end;
 end;
 
 function SpIsGitInstalled(Log: TStrings): Boolean;
@@ -826,7 +847,6 @@ class function TSpDelphiIDE.ReadEnvironmentProj(IDE: TSpIDEType; NamesAndValues:
 // This file is used by MSBuild
 // https://docs.microsoft.com/en-us/visualstudio/msbuild/how-to-use-environment-variables-in-a-build?view=vs-2017
 var
-  LStr: array[0 .. MAX_PATH] of Char;
   Filename: string;
   Doc: IXMLDocument;
   Node, Root: IXMLNode;
@@ -834,32 +854,28 @@ begin
   Result := False;
   if not Assigned(NamesAndValues) then Exit;
   NamesAndValues.Clear;
-
-  SetLastError(ERROR_SUCCESS);
-  if SHGetFolderPath(0, CSIDL_APPDATA, 0, 0, @LStr) = S_OK then begin
-    Filename := TPath.Combine(LStr, 'Embarcadero\BDS\' + IDETypes[IDE].IDERADStudioVersion + '\environment.proj');
-    if TFile.Exists(Filename) then begin
-      Doc := TXMLDocument.Create(Filename);
-      Root := Doc.ChildNodes.FindNode('Project');
+  Filename := GetEnvironmentVariable('Appdata') + '\Embarcadero\BDS\' + IDETypes[IDE].IDERADStudioVersion + '\environment.proj';
+  if TFile.Exists(Filename) then begin
+    Doc := TXMLDocument.Create(Filename);
+    Root := Doc.ChildNodes.FindNode('Project');
+    if Root <> nil then begin
+      Root := Root.ChildNodes.FindNode('PropertyGroup');
       if Root <> nil then begin
-        Root := Root.ChildNodes.FindNode('PropertyGroup');
-        if Root <> nil then begin
-          // Add $(Delphi), $(BDS), $(BDSPROJECTSDIR), $(BDSCOMMONDIR),
-          // $(BDSUSERDIR), $(BDSLIB) macros
-          Node := Root.ChildNodes.FindNode('Delphi');
-          if Node <> nil then NamesAndValues.AddPair('Delphi', Node.Text);
-          Node := Root.ChildNodes.FindNode('BDS');
-          if Node <> nil then NamesAndValues.AddPair('BDS', Node.Text);
-          Node := Root.ChildNodes.FindNode('BDSPROJECTSDIR');
-          if Node <> nil then NamesAndValues.AddPair('BDSPROJECTSDIR', Node.Text);
-          Node := Root.ChildNodes.FindNode('BDSCOMMONDIR');
-          if Node <> nil then NamesAndValues.AddPair('BDSCOMMONDIR', Node.Text);
-          Node := Root.ChildNodes.FindNode('BDSUSERDIR');
-          if Node <> nil then NamesAndValues.AddPair('BDSUSERDIR', Node.Text);
-          Node := Root.ChildNodes.FindNode('BDSLIB');
-          if Node <> nil then NamesAndValues.AddPair('BDSLIB', Node.Text);
-          Result := True;
-        end;
+        // Add $(Delphi), $(BDS), $(BDSPROJECTSDIR), $(BDSCOMMONDIR),
+        // $(BDSUSERDIR), $(BDSLIB) macros
+        Node := Root.ChildNodes.FindNode('Delphi');
+        if Node <> nil then NamesAndValues.AddPair('Delphi', Node.Text);
+        Node := Root.ChildNodes.FindNode('BDS');
+        if Node <> nil then NamesAndValues.AddPair('BDS', Node.Text);
+        Node := Root.ChildNodes.FindNode('BDSPROJECTSDIR');
+        if Node <> nil then NamesAndValues.AddPair('BDSPROJECTSDIR', Node.Text);
+        Node := Root.ChildNodes.FindNode('BDSCOMMONDIR');
+        if Node <> nil then NamesAndValues.AddPair('BDSCOMMONDIR', Node.Text);
+        Node := Root.ChildNodes.FindNode('BDSUSERDIR');
+        if Node <> nil then NamesAndValues.AddPair('BDSUSERDIR', Node.Text);
+        Node := Root.ChildNodes.FindNode('BDSLIB');
+        if Node <> nil then NamesAndValues.AddPair('BDSLIB', Node.Text);
+        Result := True;
       end;
     end;
   end;
@@ -1166,9 +1182,9 @@ end;
 function TSpDelphiDPKFile.PackageType: string;
 begin
   if FOnlyRuntime then
-    Result := 'Runtime'
+    Result := 'run-time'
   else
-    Result := 'Designtime';
+    Result := 'design-time';
 end;
 
 function TSpDelphiDPKFile.CompilePackage(APlatform: TSpIDEPlatform;
@@ -1185,6 +1201,7 @@ var
 begin
   Result := False;
   if FIDEVersion = ideNone then Exit;
+
   if not Exists then begin
     if Assigned(Log) then
       SpWriteLog(Log, SLogInvalidPath, [FDPKFilename]);
@@ -1286,18 +1303,23 @@ begin
     // Compile
     SpWriteLog(Log, SLogCompiling, [TSpDelphiIDE.IDEPlatformToString(APlatform), PackageType, FDPKFilename]);
     try
+      S := SLogErrorCompiling;
       Result := SpExecuteDosCommand(CommandLine, WorkDir, DOSOutput) = 0;
       if Assigned(Log) then
         Log.Text := Log.Text + DosOutput + #13#10;
-      if Result then
+      if Result then begin
         Result := RegisterPackage(APlatform, Log);
+        if not Result then
+          S := SLogErrorRegistering;
+      end;
     finally
       DeleteFile(DCCConfig);
     end;
-  end;
 
-  if not Result and Assigned(Log) then
-    SpWriteLog(Log, SLogErrorCompiling, [FDPKFilename]);
+    // Log error if it couldn't compile or register the package
+    if not Result and Assigned(Log) then
+      SpWriteLog(Log, S, [FDPKFilename]);
+  end;
 end;
 
 function TSpDelphiDPKFile.RegisterPackage(APlatform: TSpIDEPlatform; Log: TStrings): Boolean;
@@ -1441,6 +1463,7 @@ begin
     SpWriteLog(Log, SLogInvalidPath, [Destination]);
     Exit;
   end;
+
   for I := 0 to Count - 1 do begin
     Item := Items[I];
     // Expand ZipFile
@@ -1477,6 +1500,7 @@ begin
     end
     else
       if not Item.Git.IsEmpty then begin
+        // Check if Git is installed, only check it once
         if not GitChecked then begin
           GitChecked := True;
           if not SpIsGitInstalled(Log) then begin
@@ -1484,10 +1508,20 @@ begin
             Exit;
           end;
         end;
-        SpWriteLog(Log, SLogGitCloning, [Item.Git, Item.Destination]);
-        if not SpGitClone(Item.Git, Item.Destination, Log) then begin
-          SpWriteLog(Log, SLogGitCloneFailed, [Item.Git]);
-          Exit;
+        // Try git pull first instead of git clone
+        if TDirectory.Exists(TPath.Combine(Item.Destination, '.git')) then begin
+          SpWriteLog(Log, SLogGitPulling, [Item.Git, Item.Destination]);
+          if not SpGitPull(Item.Destination, Log) then begin
+            SpWriteLog(Log, SLogGitPullFailed, [Item.Git]);
+            Exit;
+          end;
+        end
+        else begin
+          SpWriteLog(Log, SLogGitCloning, [Item.Git, Item.Destination]);
+          if not SpGitClone(Item.Git, Item.Destination, Log) then begin
+            SpWriteLog(Log, SLogGitCloneFailed, [Item.Git]);
+            Exit;
+          end;
         end;
       end
       else
@@ -1531,7 +1565,7 @@ begin
 
   // Create TempDir
   TempDir := TPath.Combine(TPath.GetTempPath, 'SpMultiInstall');
-  CreateDir(TempDir);
+  TDirectory.CreateDirectory(TempDir);
 
   SourcesL := TStringList.Create;
   try

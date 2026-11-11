@@ -6,7 +6,7 @@ interface
 {$WARN UNIT_PLATFORM OFF}
 {$BOOLEVAL OFF} // Unit depends on short-circuit boolean evaluation
 
-//  {$DEFINE SPDEBUGMODE} // Uncomment to debug
+  {$DEFINE SPDEBUGMODE} // Uncomment to debug
 
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
@@ -54,7 +54,7 @@ type
     FinishLabel: TLabel;
     ButtonFinish: TButton;
     Bevel1: TBevel;
-    Button1: TButton;
+    ButtonSaveLog: TButton;
     aSaveLog: TAction;
     aFinish: TAction;
     SaveDialog1: TSaveDialog;
@@ -87,8 +87,8 @@ type
     { Private declarations }
   public
     { Public declarations }
-    AppPath: string;
-    Installer: TSpMultiInstaller;
+    FAppPath: string;
+    FInstaller: TSpMultiInstaller;
     procedure FillCheckListBox;
     procedure FillRadioGroup;
     function ValidateCheckListBox: Boolean;
@@ -105,7 +105,7 @@ implementation
 {$R *.dfm}
 
 uses
-  System.UITypes;
+  System.UITypes, System.IOUtils;
 
 const
   rvSetupIni = 'Setup.Ini';
@@ -115,15 +115,27 @@ const
 { Form UI }
 
 procedure TForm1.FormCreate(Sender: TObject);
+var
+  S: string;
 begin
   Screen.Cursors[crIDC_HAND] := LoadCursor(0, IDC_HAND);
   PaintBoxLabel.Cursor := crIDC_HAND;
-  AppPath := IncludeTrailingPathDelimiter(ExtractFilePath(Application.ExeName));
+  FAppPath := TPath.GetAppPath;
 
-  Installer := TSpMultiInstaller.Create(AppPath + rvSetupIni);
+  // Allow to pass the ini file via command line
+  S := '';
+  if FindCmdLineswitch('I', S) then
+    if TPath.IsRelativePath(S) then begin
+      S := TPath.Combine(FAppPath, S);
+      S := TPath.GetFullPath(S);
+    end
+  else
+    S := TPath.Combine(FAppPath, rvSetupIni);
+  FInstaller := TSpMultiInstaller.Create(S);
+
   PageControl1.ActivePageIndex := 0;
   LabelTitle.Caption := SWelcomeTitle;
-  SaveDialog1.InitialDir := AppPath;
+  SaveDialog1.InitialDir := FAppPath;
   FillCheckListBox;
   FillRadioGroup;
   ValidateCheckListBox;
@@ -135,15 +147,17 @@ end;
 
 procedure TForm1.FormDestroy(Sender: TObject);
 begin
-  Installer.Free;
+  FInstaller.Free;
 end;
 
 procedure TForm1.FormShow(Sender: TObject);
 begin
   CloseDelphi;
 
-  if DirectoryExists(Installer.ComponentPackages.DefaultInstallFolder) then begin
-    InstallFolderEdit.Text := Installer.ComponentPackages.DefaultInstallFolder;
+  // If DefaultInstallFolder and DefaultInstallIDE are set in the ini file
+  // the installer will auto start
+  if DirectoryExists(FInstaller.ComponentPackages.DefaultInstallFolder) then begin
+    InstallFolderEdit.Text := FInstaller.ComponentPackages.DefaultInstallFolder;
     if CompileCheckbox.Checked then begin
       PageControl1.ActivePageIndex := PageControl1.PageCount - 1;
       Timer1.Enabled := True; // Delay it a little for UI responsiveness
@@ -204,21 +218,21 @@ procedure TForm1.FillCheckListBox;
 var
   I, G, P: Integer;
 begin
-  for I := 0 to Installer.ComponentPackages.Count - 1 do begin
+  for I := 0 to FInstaller.ComponentPackages.Count - 1 do begin
     P := -1;
-    G := Installer.ComponentPackages[I].GroupIndex;
+    G := FInstaller.ComponentPackages[I].GroupIndex;
     if G > 0 then begin
       P := CheckListBox1.Items.IndexOfObject(Pointer(G));
       if P > -1 then
-        CheckListBox1.Items[P] := CheckListBox1.Items[P] + #13#10 + Installer.ComponentPackages[I].Name;
+        CheckListBox1.Items[P] := CheckListBox1.Items[P] + #13#10 + FInstaller.ComponentPackages[I].Name;
     end;
 
     if P = -1 then begin
-      P := CheckListBox1.Items.AddObject(Installer.ComponentPackages[I].Name, Pointer(G));
+      P := CheckListBox1.Items.AddObject(FInstaller.ComponentPackages[I].Name, Pointer(G));
       CheckListBox1.Checked[P] := True;
-      if Installer.ComponentPackages[I].Git <> '' then
+      if FInstaller.ComponentPackages[I].Git <> '' then
         CheckListBox1.Items[P] := CheckListBox1.Items[P] + #13#10 +
-          'GIT: ' + Installer.ComponentPackages[I].Git;
+          'GIT: ' + FInstaller.ComponentPackages[I].Git;
     end;
   end;
 end;
@@ -230,10 +244,10 @@ begin
   RadioGroup1.ItemIndex := -1;
 
   for IDE := Low(TSpIDEType) to High(TSpIDEType) do
-    if IDE >= Installer.ComponentPackages.MinimumIDE then
+    if IDE >= FInstaller.ComponentPackages.MinimumIDE then
       if TSpDelphiIDE.Installed(IDE) then begin
         RadioGroup1.Items.AddObject(IDETypes[IDE].IDEName, Pointer(Ord(IDE)));
-        if IDE = Installer.ComponentPackages.DefaultInstallIDE then
+        if IDE = FInstaller.ComponentPackages.DefaultInstallIDE then
           RadioGroup1.ItemIndex := RadioGroup1.Items.Count - 1;
       end;
 
@@ -371,19 +385,19 @@ begin
   for I := 0 to CheckListBox1.Count - 1 do
     if not CheckListBox1.Checked[I] then begin
       G := Integer(CheckListBox1.Items.Objects[I]);
-      for J := Installer.ComponentPackages.Count - 1 downto 0 do
-        if (G > 0) and (Installer.ComponentPackages[J].GroupIndex = G) then
-          Installer.ComponentPackages.Delete(J)
+      for J := FInstaller.ComponentPackages.Count - 1 downto 0 do
+        if (G > 0) and (FInstaller.ComponentPackages[J].GroupIndex = G) then
+          FInstaller.ComponentPackages.Delete(J)
         else
-          if CheckListBox1.items[I].Contains(Installer.ComponentPackages[J].Name) then
-            Installer.ComponentPackages.Delete(J);
+          if CheckListBox1.items[I].Contains(FInstaller.ComponentPackages[J].Name) then
+            FInstaller.ComponentPackages.Delete(J);
     end;
 
   // Prioritize GIT over ZIP
   if CheckBox1.Checked then begin
-    for J := 0 to Installer.ComponentPackages.Count - 1 do
-      if not Installer.ComponentPackages[J].Git.IsEmpty then
-        Installer.ComponentPackages[J].ZipFile := '';
+    for J := 0 to FInstaller.ComponentPackages.Count - 1 do
+      if not FInstaller.ComponentPackages[J].Git.IsEmpty then
+        FInstaller.ComponentPackages[J].ZipFile := '';
   end;
 
   aFinish.Visible := True;
@@ -394,7 +408,7 @@ begin
   Application.ProcessMessages;
   try
     // Check, Unzip, Patch, Compile, Install
-    if Installer.Install(AppPath, InstallFolderEdit.Text, IDE, LogMemo.Lines) then
+    if FInstaller.Install(FAppPath, InstallFolderEdit.Text, IDE, LogMemo.Lines) then
       Result := True;
   finally
     LabelTitle.Caption := SFinishTitle;

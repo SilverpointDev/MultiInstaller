@@ -1,11 +1,13 @@
 object Form1: TForm1
   Left = 293
   Top = 145
-  BorderStyle = bsDialog
+  BorderIcons = [biSystemMenu, biMinimize]
   Caption = 'Silverpoint MultiInstaller'
   ClientHeight = 378
   ClientWidth = 495
   Color = clBtnFace
+  Constraints.MinHeight = 417
+  Constraints.MinWidth = 511
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
   Font.Height = -11
@@ -28,6 +30,9 @@ object Form1: TForm1
     object TabSheet1: TTabSheet
       Caption = 'TabSheet1'
       TabVisible = False
+      DesignSize = (
+        487
+        255)
       object Label1: TLabel
         Left = 8
         Top = 8
@@ -40,6 +45,7 @@ object Form1: TForm1
         Top = 24
         Width = 473
         Height = 201
+        Anchors = [akLeft, akTop, akRight, akBottom]
         Style = lbOwnerDrawVariable
         TabOrder = 0
         OnClickCheck = CheckListBox1ClickCheck
@@ -51,6 +57,7 @@ object Form1: TForm1
         Top = 231
         Width = 249
         Height = 17
+        Anchors = [akLeft, akBottom]
         Caption = 'Get files from GIT repository when available'
         Checked = True
         State = cbChecked
@@ -61,6 +68,9 @@ object Form1: TForm1
       Caption = 'TabSheet2'
       ImageIndex = 1
       TabVisible = False
+      DesignSize = (
+        487
+        255)
       object Label2: TLabel
         Left = 8
         Top = 16
@@ -75,6 +85,7 @@ object Form1: TForm1
         Top = 42
         Width = 393
         Height = 21
+        Anchors = [akLeft, akTop, akRight]
         TabOrder = 0
       end
       object ButtonBrowse: TButton
@@ -83,6 +94,7 @@ object Form1: TForm1
         Width = 75
         Height = 25
         Action = aBrowse
+        Anchors = [akTop, akRight]
         TabOrder = 1
       end
       object RadioGroup1: TRadioGroup
@@ -90,6 +102,7 @@ object Form1: TForm1
         Top = 80
         Width = 473
         Height = 171
+        Anchors = [akLeft, akTop, akRight, akBottom]
         Caption = '  '
         Columns = 2
         Enabled = False
@@ -109,6 +122,9 @@ object Form1: TForm1
       Caption = 'TabSheet3'
       ImageIndex = 2
       TabVisible = False
+      DesignSize = (
+        487
+        255)
       object Label3: TLabel
         Left = 8
         Top = 8
@@ -119,11 +135,12 @@ object Form1: TForm1
       object FinishLabel: TLabel
         Left = 8
         Top = 238
-        Width = 427
+        Width = 326
         Height = 13
+        Anchors = [akLeft, akBottom]
         Caption = 
-          'Setup has finished installing the components on your computer. C' +
-          'lick Finish to exit Setup.'
+          'Setup has finished installing the packages. Click Finish to exit' +
+          ' Setup.'
         Visible = False
       end
       object LogMemo: TMemo
@@ -131,6 +148,7 @@ object Form1: TForm1
         Top = 32
         Width = 473
         Height = 193
+        Anchors = [akLeft, akTop, akRight, akBottom]
         ReadOnly = True
         ScrollBars = ssBoth
         TabOrder = 0
@@ -155,6 +173,7 @@ object Form1: TForm1
       Top = 0
       Width = 322
       Height = 9
+      Anchors = [akLeft, akTop, akRight]
       Shape = bsBottomLine
     end
     object PaintBoxLabel: TPaintBox
@@ -165,12 +184,13 @@ object Form1: TForm1
       OnClick = PaintBoxLabelClick
       OnPaint = PaintBoxLabelPaint
     end
-    object Button1: TButton
+    object ButtonSaveLog: TButton
       Left = 315
       Top = 18
       Width = 75
       Height = 25
       Action = aSaveLog
+      Anchors = [akRight, akBottom]
       TabOrder = 4
     end
     object ButtonFinish: TButton
@@ -179,6 +199,7 @@ object Form1: TForm1
       Width = 75
       Height = 25
       Action = aFinish
+      Anchors = [akRight, akBottom]
       TabOrder = 3
     end
     object ButtonNext: TButton
@@ -196,6 +217,7 @@ object Form1: TForm1
       Width = 75
       Height = 25
       Action = aBack
+      Anchors = [akRight, akBottom]
       Enabled = False
       TabOrder = 1
     end
@@ -205,6 +227,7 @@ object Form1: TForm1
       Width = 75
       Height = 25
       Action = aCancel
+      Anchors = [akRight, akBottom]
       TabOrder = 2
     end
   end
@@ -218,6 +241,9 @@ object Form1: TForm1
     Color = clWhite
     ParentBackground = False
     TabOrder = 2
+    DesignSize = (
+      495
+      60)
     object LabelTitle: TLabel
       Left = 8
       Top = 15
@@ -247,6 +273,7 @@ object Form1: TForm1
       Top = 5
       Width = 48
       Height = 48
+      Anchors = [akTop, akRight]
       AutoSize = True
       Picture.Data = {
         07544269746D6170361B0000424D361B00000000000036000000280000003000
